@@ -125,7 +125,7 @@ jobs:
         run: uv run pytest ${{ inputs.test-path }} -v --cov=${{ inputs.package-name }} --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage to Codecov
-        if: matrix.python-version == inputs.coverage-python-version && secrets.CODECOV_TOKEN != ''
+        if: matrix.python-version == inputs.coverage-python-version
         uses: codecov/codecov-action@v5
         with:
           file: ./coverage.xml

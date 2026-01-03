@@ -98,7 +98,7 @@ jobs:
         run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
-        if: matrix.go-version == inputs.coverage-go-version && secrets.CODECOV_TOKEN != ''
+        if: matrix.go-version == inputs.coverage-go-version
         uses: codecov/codecov-action@v5
         with:
           file: ./coverage.txt
