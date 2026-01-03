@@ -1,0 +1,173 @@
+name: Python Release
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version for building'
+        type: string
+        default: '3.11'
+      publish-to-pypi:
+        description: 'Publish to PyPI (requires PYPI_API_TOKEN secret)'
+        type: boolean
+        default: true
+      publish-to-testpypi:
+        description: 'Publish to TestPyPI first (requires TESTPYPI_API_TOKEN secret)'
+        type: boolean
+        default: false
+      build-only:
+        description: 'Only build, do not publish'
+        type: boolean
+        default: false
+    secrets:
+      PYPI_API_TOKEN:
+        description: 'PyPI API token for publishing'
+        required: false
+      TESTPYPI_API_TOKEN:
+        description: 'TestPyPI API token for publishing'
+        required: false
+
+jobs:
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build package
+        run: uv build
+
+      - name: Check package with twine
+        run: uv run --with twine twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 30
+
+  test-install:
+    name: Test Installation
+    runs-on: ${{ matrix.os }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install wheel
+        shell: bash
+        run: |
+          uv pip install --system dist/*.whl
+
+      - name: Test import
+        shell: bash
+        run: |
+          # Extract package name from wheel filename
+          WHEEL=$(ls dist/*.whl | head -1)
+          PACKAGE=$(basename "$WHEEL" | cut -d'-' -f1 | tr '-' '_')
+          uv run --with dist/*.whl python -c "import $PACKAGE; print(f'Successfully imported {\"$PACKAGE\"}')"
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    runs-on: ubuntu-latest
+    needs: [build, test-install]
+    if: ${{ inputs.publish-to-testpypi && !inputs.build-only }}
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/${{ needs.build.outputs.version }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TESTPYPI_API_TOKEN }}
+          skip-existing: true
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [build, test-install, publish-testpypi]
+    if: ${{ always() && inputs.publish-to-pypi && !inputs.build-only && needs.build.result == 'success' && needs.test-install.result == 'success' && (needs.publish-testpypi.result == 'success' || needs.publish-testpypi.result == 'skipped') }}
+    environment:
+      name: pypi
+      url: https://pypi.org/project/${{ needs.build.outputs.version }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build, publish-pypi]
+    if: ${{ !inputs.build-only && needs.publish-pypi.result == 'success' }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: Release v${{ needs.build.outputs.version }}
+          generate_release_notes: true
+          files: dist/*

@@ -1,0 +1,27 @@
+# Copy this file to your project's .github/workflows/release.yml
+# Replace YOUR_USERNAME with your GitHub username
+# Triggered on version tags (e.g., v1.0.0) or manual dispatch
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to PyPI'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  release:
+    uses: YOUR_USERNAME/workflows/.github/workflows/python-release.yml@main
+    with:
+      publish-to-pypi: ${{ github.event_name == 'push' || inputs.publish }}
+      publish-to-testpypi: false  # Set to true to test on TestPyPI first
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      # TESTPYPI_API_TOKEN: ${{ secrets.TESTPYPI_API_TOKEN }}

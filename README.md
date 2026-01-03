@@ -6,13 +6,20 @@ This repository contains reusable GitHub Actions workflows for Python, Node.js, 
 
 | Workflow | Description |
 |----------|-------------|
-| `python-ci.yml` | Python CI with uv, ruff linting, type checking, pytest |
+| `python-ci.yml` | Python CI with uv, ruff linting, type checking, pytest, build verification |
 | `python-security.yml` | Python security scanning (bandit, safety, semgrep, trivy, CodeQL) |
+| `python-release.yml` | Automated PyPI publishing with multi-OS install testing |
 | `node-ci.yml` | Node.js CI with npm, linting, testing |
 | `node-security.yml` | Node.js security scanning (npm audit, CodeQL, trivy) |
 | `go-ci.yml` | Go CI with golangci-lint, testing, cross-platform builds |
 | `claude.yml` | Claude PR assistant for @claude mentions |
 | `claude-security-review.yml` | Claude-powered security code review |
+
+## Configuration Files
+
+| File | Description |
+|------|-------------|
+| `examples/dependabot.yml` | Dependabot config for automated dependency updates |
 
 ## Usage
 
@@ -58,6 +65,26 @@ jobs:
     uses: YOUR_USERNAME/workflows/.github/workflows/python-security.yml@main
     with:
       package-name: your_package
+```
+
+Create `.github/workflows/release.yml`:
+
+```yaml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: YOUR_USERNAME/workflows/.github/workflows/python-release.yml@main
+    with:
+      publish-to-pypi: true
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 ```
 
 ### Node.js Project
@@ -128,6 +155,10 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
 
+### Dependabot
+
+Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and uncomment the relevant sections for your project type.
+
 ## Workflow Inputs
 
 ### python-ci.yml
@@ -140,7 +171,17 @@ jobs:
 | `type-checker` | string | `'pyright'` | Type checker (`pyright` or `mypy`) |
 | `run-lint` | boolean | `true` | Run ruff linting |
 | `run-tests` | boolean | `true` | Run pytest |
+| `run-build` | boolean | `true` | Build and verify package |
 | `test-path` | string | `'tests/'` | Path to test directory |
+
+### python-release.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `python-version` | string | `'3.11'` | Python version for building |
+| `publish-to-pypi` | boolean | `true` | Publish to PyPI |
+| `publish-to-testpypi` | boolean | `false` | Publish to TestPyPI first |
+| `build-only` | boolean | `false` | Only build, don't publish |
 
 ### python-security.yml
 
@@ -194,3 +235,31 @@ jobs:
 ### Go Projects
 
 - Use Go modules (`go.mod`)
+
+## Future Improvements
+
+The following enhancements are planned or could be added:
+
+### Workflows
+
+- [ ] **docker.yml** - Build, scan, and push Docker images to registries (GHCR, Docker Hub)
+- [ ] **node-release.yml** - Automated npm publishing on tags
+- [ ] **go-release.yml** - Automated Go release with goreleaser
+- [ ] **pr-labeler.yml** - Auto-label PRs based on files changed
+- [ ] **release-please.yml** - Automated versioning and changelogs using conventional commits
+- [ ] **stale.yml** - Auto-close stale issues and PRs
+
+### Enhancements to Existing Workflows
+
+- [ ] **OS matrix testing** - Test on ubuntu/macos/windows in CI workflows
+- [ ] **Pre-commit integration** - Run pre-commit hooks in CI
+- [ ] **SBOM generation** - Generate Software Bill of Materials for compliance
+- [ ] **SLSA provenance** - Supply chain security attestations
+- [ ] **Benchmark workflows** - Performance regression testing
+- [ ] **API breaking change detection** - For library projects
+- [ ] **Documentation builds** - mkdocs/sphinx builds and deployment
+
+### Configuration Files
+
+- [ ] **renovate.json** - Alternative to Dependabot with more features
+- [ ] **.pre-commit-config.yaml** - Standard pre-commit hooks template

@@ -39,6 +39,10 @@ on:
         description: 'Path to test directory'
         type: string
         default: 'tests/'
+      run-build:
+        description: 'Build and verify package with twine'
+        type: boolean
+        default: true
     secrets:
       CODECOV_TOKEN:
         description: 'Codecov token for coverage upload'
@@ -127,3 +131,29 @@ jobs:
           file: ./coverage.xml
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Build package
+        run: uv build
+
+      - name: Check package with twine
+        run: uv run --with twine twine check dist/*
+
+      - name: Test package installation
+        run: |
+          uv pip install --system dist/*.whl
+          uv run --with dist/*.whl python -c "import ${{ inputs.package-name }}; print('Package import successful')"
