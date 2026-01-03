@@ -89,18 +89,13 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Install wheel
-        shell: bash
-        run: |
-          uv pip install --system dist/*.whl
-
       - name: Test import
         shell: bash
         run: |
           # Extract package name from wheel filename
           WHEEL=$(ls dist/*.whl | head -1)
           PACKAGE=$(basename "$WHEEL" | cut -d'-' -f1 | tr '-' '_')
-          uv run --with dist/*.whl python -c "import $PACKAGE; print(f'Successfully imported {\"$PACKAGE\"}')"
+          uv run --with "$WHEEL" python -c "import $PACKAGE; print(f'Successfully imported {\"$PACKAGE\"}')"
 
   publish-testpypi:
     name: Publish to TestPyPI

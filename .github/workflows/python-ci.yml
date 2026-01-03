@@ -155,5 +155,6 @@ jobs:
 
       - name: Test package installation
         run: |
-          uv pip install --system dist/*.whl
-          uv run --with dist/*.whl python -c "import ${{ inputs.package-name }}; print('Package import successful')"
+          uv venv test-env
+          uv pip install dist/*.whl --python test-env
+          test-env/bin/python -c "import ${{ inputs.package-name }}; print('Package import successful')"
