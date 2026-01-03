@@ -1,0 +1,19 @@
+# Copy this file to your project's .github/workflows/ci.yml
+# Replace YOUR_USERNAME with your GitHub username
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: YOUR_USERNAME/workflows/.github/workflows/node-ci.yml@main
+    with:
+      node-version: '22'
+      run-build: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

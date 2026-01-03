@@ -1,0 +1,19 @@
+# Copy this file to your project's .github/workflows/security.yml
+# Replace YOUR_USERNAME with your GitHub username
+
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  security:
+    uses: YOUR_USERNAME/workflows/.github/workflows/node-security.yml@main
+    with:
+      node-version: '22'

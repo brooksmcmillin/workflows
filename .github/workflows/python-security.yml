@@ -1,0 +1,206 @@
+name: Python Security
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version for security scanning'
+        type: string
+        default: '3.11'
+      package-name:
+        description: 'Name of the Python package to scan'
+        type: string
+        required: true
+      run-bandit:
+        description: 'Run Bandit security linter'
+        type: boolean
+        default: true
+      run-safety:
+        description: 'Run Safety vulnerability check'
+        type: boolean
+        default: true
+      run-semgrep:
+        description: 'Run Semgrep security scan'
+        type: boolean
+        default: true
+      run-trivy:
+        description: 'Run Trivy filesystem scan'
+        type: boolean
+        default: true
+      run-codeql:
+        description: 'Run CodeQL analysis'
+        type: boolean
+        default: true
+      run-dependency-review:
+        description: 'Run dependency review on PRs'
+        type: boolean
+        default: true
+      allowed-licenses:
+        description: 'Comma-separated list of allowed licenses'
+        type: string
+        default: 'MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Python-2.0'
+    secrets:
+      SEMGREP_APP_TOKEN:
+        description: 'Semgrep app token for publishing results'
+        required: false
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run Bandit security linter
+        if: ${{ inputs.run-bandit }}
+        run: |
+          uv run --with bandit bandit -r ${{ inputs.package-name }}/ -f json -o bandit-report.json || true
+          uv run --with bandit bandit -r ${{ inputs.package-name }}/
+
+      - name: Run Safety vulnerability check
+        if: ${{ inputs.run-safety }}
+        run: |
+          uv run --with safety safety check --json --output safety-report.json || true
+          uv run --with safety safety check
+        continue-on-error: true
+
+      - name: Run pip-audit
+        run: |
+          uv run --with pip-audit pip-audit --desc on || true
+        continue-on-error: true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          retention-days: 30
+
+  semgrep:
+    name: Semgrep Security Scan
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-semgrep }}
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep scan
+        run: semgrep scan --config=p/security-audit --config=p/secrets --config=p/python --sarif --output=semgrep.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-codeql }}
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  trivy:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-trivy }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy and generate SARIF
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: trivy
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-dependency-review && github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          allow-licenses: ${{ inputs.allowed-licenses }}
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [security-scan, semgrep, codeql, trivy]
+    if: always()
+    steps:
+      - name: Create summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Semgrep | ${{ needs.semgrep.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL Analysis | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Scan | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY

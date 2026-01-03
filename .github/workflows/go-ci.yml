@@ -1,0 +1,145 @@
+name: Go CI
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version to use'
+        type: string
+        default: '1.21'
+      go-versions:
+        description: 'JSON array of Go versions to test (overrides go-version if set)'
+        type: string
+        default: ''
+      run-lint:
+        description: 'Run golangci-lint'
+        type: boolean
+        default: true
+      run-tests:
+        description: 'Run tests'
+        type: boolean
+        default: true
+      run-build:
+        description: 'Run build for multiple platforms'
+        type: boolean
+        default: false
+      coverage-go-version:
+        description: 'Go version to use for coverage upload'
+        type: string
+        default: '1.21'
+      lint-timeout:
+        description: 'Timeout for golangci-lint'
+        type: string
+        default: '5m'
+      build-targets:
+        description: 'JSON array of build targets [{goos, goarch}]'
+        type: string
+        default: '[{"goos":"linux","goarch":"amd64"},{"goos":"linux","goarch":"arm64"},{"goos":"darwin","goarch":"amd64"},{"goos":"darwin","goarch":"arm64"},{"goos":"windows","goarch":"amd64"}]'
+      binary-name:
+        description: 'Name of the binary to build (if run-build is true)'
+        type: string
+        default: ''
+      binary-path:
+        description: 'Path to the main package (if run-build is true)'
+        type: string
+        default: './cmd/...'
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov token for coverage upload'
+        required: false
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-lint }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=${{ inputs.lint-timeout }}
+
+  test:
+    name: Test${{ inputs.go-versions != '' && format(' Go {0}', matrix.go-version) || '' }}
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-tests }}
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ${{ inputs.go-versions != '' && fromJson(inputs.go-versions) || fromJson(format('["{0}"]', inputs.go-version)) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests with coverage
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Upload coverage to Codecov
+        if: matrix.go-version == inputs.coverage-go-version && secrets.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage.txt
+          flags: unittests
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build ${{ matrix.target.goos }}/${{ matrix.target.goarch }}
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-build }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(inputs.build-targets) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.target.goos }}
+          GOARCH: ${{ matrix.target.goarch }}
+        run: |
+          if [ -n "${{ inputs.binary-name }}" ]; then
+            ext=""
+            if [ "${{ matrix.target.goos }}" = "windows" ]; then
+              ext=".exe"
+            fi
+            go build -v -o ${{ inputs.binary-name }}-${{ matrix.target.goos }}-${{ matrix.target.goarch }}${ext} ${{ inputs.binary-path }}
+          else
+            go build -v ./...
+          fi
+
+      - name: Upload build artifacts
+        if: ${{ inputs.binary-name != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.binary-name }}-${{ matrix.target.goos }}-${{ matrix.target.goarch }}
+          path: ${{ inputs.binary-name }}-*

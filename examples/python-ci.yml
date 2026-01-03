@@ -1,0 +1,20 @@
+# Copy this file to your project's .github/workflows/ci.yml
+# Replace YOUR_USERNAME with your GitHub username and PACKAGE_NAME with your package name
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: YOUR_USERNAME/workflows/.github/workflows/python-ci.yml@main
+    with:
+      package-name: PACKAGE_NAME
+      python-versions: '["3.11", "3.12", "3.13"]'
+      type-checker: pyright  # or mypy
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

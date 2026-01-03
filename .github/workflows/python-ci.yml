@@ -1,0 +1,129 @@
+name: Python CI
+
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: 'JSON array of Python versions to test'
+        type: string
+        default: '["3.11", "3.12", "3.13"]'
+      package-name:
+        description: 'Name of the Python package (for coverage reporting)'
+        type: string
+        required: true
+      run-type-check:
+        description: 'Run type checking with pyright'
+        type: boolean
+        default: true
+      type-checker:
+        description: 'Type checker to use (pyright or mypy)'
+        type: string
+        default: 'pyright'
+      run-lint:
+        description: 'Run ruff linting and formatting check'
+        type: boolean
+        default: true
+      run-tests:
+        description: 'Run pytest'
+        type: boolean
+        default: true
+      coverage-python-version:
+        description: 'Python version to use for coverage upload'
+        type: string
+        default: '3.11'
+      fail-fast:
+        description: 'Fail fast on first error in matrix'
+        type: boolean
+        default: false
+      test-path:
+        description: 'Path to test directory'
+        type: string
+        default: 'tests/'
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov token for coverage upload'
+        required: false
+
+jobs:
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-lint }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run ruff linter
+        run: uv run ruff check --output-format=github .
+
+      - name: Run ruff formatter
+        run: uv run ruff format --check .
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-type-check }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run pyright
+        if: ${{ inputs.type-checker == 'pyright' }}
+        run: uv run --with pyright pyright ${{ inputs.package-name }}/
+
+      - name: Run mypy
+        if: ${{ inputs.type-checker == 'mypy' }}
+        run: uv run mypy ${{ inputs.package-name }}/
+
+  test:
+    name: Test Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-tests }}
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        python-version: ${{ fromJson(inputs.python-versions) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests with coverage
+        run: uv run pytest ${{ inputs.test-path }} -v --cov=${{ inputs.package-name }} --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == inputs.coverage-python-version && secrets.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

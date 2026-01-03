@@ -1,0 +1,21 @@
+# Copy this file to your project's .github/workflows/claude.yml
+# Replace YOUR_USERNAME with your GitHub username
+# Requires CLAUDE_CODE_OAUTH_TOKEN secret to be set
+
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    uses: YOUR_USERNAME/workflows/.github/workflows/claude.yml@main
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

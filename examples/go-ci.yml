@@ -1,0 +1,21 @@
+# Copy this file to your project's .github/workflows/ci.yml
+# Replace YOUR_USERNAME with your GitHub username
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: YOUR_USERNAME/workflows/.github/workflows/go-ci.yml@main
+    with:
+      go-versions: '["1.21", "1.22"]'
+      run-build: true
+      binary-name: myapp        # Optional: name of your binary
+      binary-path: ./cmd/myapp  # Optional: path to main package
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
