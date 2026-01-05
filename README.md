@@ -13,6 +13,7 @@ This repository contains reusable GitHub Actions workflows for Python, Node.js, 
 | `node-ci.yml` | Node.js CI with npm, linting, testing |
 | `node-security.yml` | Node.js security scanning (npm audit, CodeQL, trivy) |
 | `go-ci.yml` | Go CI with golangci-lint, testing, cross-platform builds |
+| `ansible-ci.yml` | Ansible CI with yamllint, ansible-lint, syntax checking |
 | `claude.yml` | Claude PR assistant for @claude mentions |
 | `claude-security-review.yml` | Claude-powered security code review |
 
@@ -153,6 +154,29 @@ jobs:
       binary-path: ./cmd/myapp
 ```
 
+### Ansible Project
+
+Create `.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  ci:
+    uses: YOUR_USERNAME/workflows/.github/workflows/ansible-ci.yml@main
+    with:
+      ansible-version: 'latest'
+      python-version: '3.12'
+      # Optional: specify playbooks to check (auto-detects by default)
+      # playbook-paths: 'site.yml deploy.yml'
+```
+
 ### Claude PR Assistant
 
 Create `.github/workflows/claude.yml`:
@@ -259,6 +283,19 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 | `binary-name` | string | `''` | Binary name for builds |
 | `binary-path` | string | `'./cmd/...'` | Path to main package |
 
+### ansible-ci.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `ansible-version` | string | `'latest'` | Ansible version (`latest`, `2.16`, `2.17`, etc.) |
+| `python-version` | string | `'3.12'` | Python version for running Ansible |
+| `run-yamllint` | boolean | `true` | Run yamllint on YAML files |
+| `run-ansible-lint` | boolean | `true` | Run ansible-lint |
+| `run-syntax-check` | boolean | `true` | Run ansible-playbook --syntax-check |
+| `playbook-paths` | string | `''` | Space-separated playbook paths (auto-detects if empty) |
+| `lint-config` | string | `''` | Path to ansible-lint config file |
+| `yamllint-config` | string | `''` | Path to yamllint config file |
+
 ## Requirements
 
 ### Python Projects
@@ -277,6 +314,12 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 ### Go Projects
 
 - Use Go modules (`go.mod`)
+
+### Ansible Projects
+
+- Standard Ansible directory structure
+- Playbooks with `hosts:` directive for auto-detection
+- Optional: `requirements.yml` for collection dependencies
 
 ## Future Improvements
 

@@ -1,0 +1,22 @@
+# Copy this file to your project's .github/workflows/ci.yml
+# Replace YOUR_USERNAME with your GitHub username
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  ci:
+    uses: YOUR_USERNAME/workflows/.github/workflows/ansible-ci.yml@main
+    with:
+      ansible-version: 'latest'
+      python-version: '3.12'
+      # Optionally specify playbook paths (defaults to auto-detect)
+      # playbook-paths: 'site.yml deploy.yml'
+      # Optionally specify config files
+      # lint-config: '.ansible-lint'
+      # yamllint-config: '.yamllint.yml'
