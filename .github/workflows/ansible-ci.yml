@@ -1,0 +1,162 @@
+name: Ansible CI
+
+on:
+  workflow_call:
+    inputs:
+      ansible-version:
+        description: 'Ansible version to install (e.g., "latest", "2.16", "2.17")'
+        type: string
+        default: 'latest'
+      python-version:
+        description: 'Python version to use'
+        type: string
+        default: '3.12'
+      run-yamllint:
+        description: 'Run yamllint on YAML files'
+        type: boolean
+        default: true
+      run-ansible-lint:
+        description: 'Run ansible-lint'
+        type: boolean
+        default: true
+      run-syntax-check:
+        description: 'Run ansible-playbook --syntax-check on all playbooks'
+        type: boolean
+        default: true
+      playbook-paths:
+        description: 'Space-separated list of playbook files to syntax check (defaults to *.yaml in root)'
+        type: string
+        default: ''
+      lint-config:
+        description: 'Path to ansible-lint config file'
+        type: string
+        default: ''
+      yamllint-config:
+        description: 'Path to yamllint config file'
+        type: string
+        default: ''
+
+jobs:
+  yamllint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-yamllint }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Create default yamllint config
+        if: ${{ inputs.yamllint-config == '' }}
+        run: |
+          cat > .yamllint.yml << 'EOF'
+          extends: default
+          rules:
+            line-length:
+              max: 160
+              allow-non-breakable-words: true
+              allow-non-breakable-inline-mappings: true
+            truthy:
+              allowed-values: ['true', 'false', 'yes', 'no']
+            comments:
+              min-spaces-from-content: 1
+            braces:
+              min-spaces-inside: 0
+              max-spaces-inside: 1
+          EOF
+
+      - name: Run yamllint
+        run: |
+          if [ -n "${{ inputs.yamllint-config }}" ]; then
+            yamllint -c "${{ inputs.yamllint-config }}" .
+          else
+            yamllint -c .yamllint.yml .
+          fi
+
+  ansible-lint:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-ansible-lint }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install ansible-lint
+        run: |
+          if [ "${{ inputs.ansible-version }}" = "latest" ]; then
+            pip install ansible ansible-lint
+          else
+            pip install "ansible-core~=${{ inputs.ansible-version }}.0" ansible-lint
+          fi
+
+      - name: Install required collections
+        run: |
+          if [ -f requirements.yml ]; then
+            ansible-galaxy collection install -r requirements.yml
+          fi
+          # Always install community.general for common modules like pacman
+          ansible-galaxy collection install community.general
+
+      - name: Run ansible-lint
+        run: |
+          if [ -n "${{ inputs.lint-config }}" ]; then
+            ansible-lint -c "${{ inputs.lint-config }}"
+          else
+            ansible-lint
+          fi
+
+  syntax-check:
+    name: Syntax Check
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-syntax-check }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install Ansible
+        run: |
+          if [ "${{ inputs.ansible-version }}" = "latest" ]; then
+            pip install ansible
+          else
+            pip install "ansible-core~=${{ inputs.ansible-version }}.0"
+          fi
+
+      - name: Install required collections
+        run: |
+          if [ -f requirements.yml ]; then
+            ansible-galaxy collection install -r requirements.yml
+          fi
+          ansible-galaxy collection install community.general
+
+      - name: Find and check playbooks
+        run: |
+          PLAYBOOKS="${{ inputs.playbook-paths }}"
+          if [ -z "$PLAYBOOKS" ]; then
+            # Find all yaml files in root that look like playbooks (contain 'hosts:')
+            PLAYBOOKS=$(grep -l "^- .*hosts:" *.yaml *.yml 2>/dev/null || true)
+          fi
+
+          if [ -z "$PLAYBOOKS" ]; then
+            echo "No playbooks found to check"
+            exit 0
+          fi
+
+          echo "Checking playbooks: $PLAYBOOKS"
+          for playbook in $PLAYBOOKS; do
+            echo "Checking $playbook..."
+            ansible-playbook --syntax-check -i localhost, "$playbook"
+          done
