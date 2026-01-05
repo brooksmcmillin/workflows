@@ -1,0 +1,332 @@
+# Reusable Python Pre-commit Workflow
+# Standard pre-commit checks for Python projects including linting, formatting,
+# type checking, testing, and security scans.
+#
+# Usage:
+#   jobs:
+#     precommit:
+#       uses: anthropics/workflows/.github/workflows/python-precommit.yml@main
+#       with:
+#         package-name: my-package
+#       secrets:
+#         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+name: Python Pre-commit
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use for checks'
+        type: string
+        default: '3.12'
+      package-name:
+        description: 'Name of the Python package (for coverage reporting)'
+        type: string
+        required: true
+      test-path:
+        description: 'Path to test directory'
+        type: string
+        default: 'tests/'
+      source-path:
+        description: 'Path to source directory (for security scans)'
+        type: string
+        default: 'src/'
+      # Feature flags
+      run-lint:
+        description: 'Run ruff linting checks'
+        type: boolean
+        default: true
+      run-format:
+        description: 'Run ruff format checks'
+        type: boolean
+        default: true
+      run-type-check:
+        description: 'Run type checking with pyright'
+        type: boolean
+        default: true
+      run-tests:
+        description: 'Run pytest'
+        type: boolean
+        default: true
+      run-security:
+        description: 'Run security checks (bandit)'
+        type: boolean
+        default: true
+      # Command customization
+      lint-command:
+        description: 'Custom lint command (overrides default ruff check)'
+        type: string
+        default: ''
+      format-command:
+        description: 'Custom format command (overrides default ruff format --check)'
+        type: string
+        default: ''
+      type-check-command:
+        description: 'Custom type check command (overrides default pyright)'
+        type: string
+        default: ''
+      test-command:
+        description: 'Custom test command (overrides default pytest)'
+        type: string
+        default: ''
+      # Additional options
+      fail-fast:
+        description: 'Fail immediately on first error'
+        type: boolean
+        default: true
+      upload-coverage:
+        description: 'Upload coverage to Codecov'
+        type: boolean
+        default: true
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov token for coverage upload'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-lint }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run ruff linter
+        if: ${{ inputs.lint-command == '' }}
+        run: uv run ruff check --output-format=github .
+
+      - name: Run custom lint command
+        if: ${{ inputs.lint-command != '' }}
+        run: uv run ${{ inputs.lint-command }}
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-format }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run ruff formatter check
+        if: ${{ inputs.format-command == '' }}
+        run: uv run ruff format --check .
+
+      - name: Run custom format command
+        if: ${{ inputs.format-command != '' }}
+        run: uv run ${{ inputs.format-command }}
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-type-check }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run pyright
+        if: ${{ inputs.type-check-command == '' }}
+        run: uv run pyright
+
+      - name: Run custom type check command
+        if: ${{ inputs.type-check-command != '' }}
+        run: uv run ${{ inputs.type-check-command }}
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-tests }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run pytest
+        if: ${{ inputs.test-command == '' }}
+        run: |
+          uv run pytest ${{ inputs.test-path }} -v \
+            --cov=${{ inputs.package-name }} \
+            --cov-report=xml \
+            --cov-report=term-missing
+
+      - name: Run custom test command
+        if: ${{ inputs.test-command != '' }}
+        run: uv run ${{ inputs.test-command }}
+
+      - name: Upload coverage to Codecov
+        if: ${{ inputs.upload-coverage && inputs.test-command == '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-security }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run bandit security scan
+        run: |
+          uv run --with bandit bandit -r ${{ inputs.source-path }} -f json -o bandit-results.json || true
+          uv run --with bandit bandit -r ${{ inputs.source-path }}
+
+      - name: Upload bandit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-results
+          path: bandit-results.json
+          retention-days: 30
+
+  summary:
+    name: Pre-commit Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lint, format, type-check, test, security]
+    steps:
+      - name: Check results
+        run: |
+          echo "## Pre-commit Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Lint
+          if [ "${{ inputs.run-lint }}" == "true" ]; then
+            if [ "${{ needs.lint.result }}" == "success" ]; then
+              echo "| Lint | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.lint.result }}" == "skipped" ]; then
+              echo "| Lint | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Lint | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Lint | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Format
+          if [ "${{ inputs.run-format }}" == "true" ]; then
+            if [ "${{ needs.format.result }}" == "success" ]; then
+              echo "| Format | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.format.result }}" == "skipped" ]; then
+              echo "| Format | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Format | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Format | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Type Check
+          if [ "${{ inputs.run-type-check }}" == "true" ]; then
+            if [ "${{ needs.type-check.result }}" == "success" ]; then
+              echo "| Type Check | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.type-check.result }}" == "skipped" ]; then
+              echo "| Type Check | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Type Check | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Type Check | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Test
+          if [ "${{ inputs.run-tests }}" == "true" ]; then
+            if [ "${{ needs.test.result }}" == "success" ]; then
+              echo "| Test | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test.result }}" == "skipped" ]; then
+              echo "| Test | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Test | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Test | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Security
+          if [ "${{ inputs.run-security }}" == "true" ]; then
+            if [ "${{ needs.security.result }}" == "success" ]; then
+              echo "| Security | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.security.result }}" == "skipped" ]; then
+              echo "| Security | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Security | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Security | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail if any check failed
+        if: ${{ inputs.fail-fast }}
+        run: |
+          if [ "${{ needs.lint.result }}" == "failure" ] || \
+             [ "${{ needs.format.result }}" == "failure" ] || \
+             [ "${{ needs.type-check.result }}" == "failure" ] || \
+             [ "${{ needs.test.result }}" == "failure" ] || \
+             [ "${{ needs.security.result }}" == "failure" ]; then
+            echo "One or more checks failed"
+            exit 1
+          fi

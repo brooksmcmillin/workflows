@@ -7,6 +7,7 @@ This repository contains reusable GitHub Actions workflows for Python, Node.js, 
 | Workflow | Description |
 |----------|-------------|
 | `python-ci.yml` | Python CI with uv, ruff linting, type checking, pytest, build verification |
+| `python-precommit.yml` | Fast pre-commit checks (ruff, pyright, pytest, bandit) for PR validation |
 | `python-security.yml` | Python security scanning (bandit, safety, semgrep, trivy, CodeQL) |
 | `python-release.yml` | Automated PyPI publishing with multi-OS install testing |
 | `node-ci.yml` | Node.js CI with npm, linting, testing |
@@ -65,6 +66,27 @@ jobs:
     uses: YOUR_USERNAME/workflows/.github/workflows/python-security.yml@main
     with:
       package-name: your_package
+```
+
+Create `.github/workflows/precommit.yml` (lightweight alternative to full CI):
+
+```yaml
+name: Pre-commit
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  precommit:
+    uses: YOUR_USERNAME/workflows/.github/workflows/python-precommit.yml@main
+    with:
+      package-name: your_package
+      # Optional: customize checks
+      # python-version: '3.12'
+      # run-security: false  # Disable bandit if using python-security.yml separately
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 ```
 
 Create `.github/workflows/release.yml`:
@@ -174,6 +196,26 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 | `run-build` | boolean | `true` | Build and verify package |
 | `test-path` | string | `'tests/'` | Path to test directory |
 
+### python-precommit.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `python-version` | string | `'3.12'` | Python version for checks |
+| `package-name` | string | **required** | Name of the Python package |
+| `test-path` | string | `'tests/'` | Path to test directory |
+| `source-path` | string | `'src/'` | Path to source directory (for security scans) |
+| `run-lint` | boolean | `true` | Run ruff linting |
+| `run-format` | boolean | `true` | Run ruff format check |
+| `run-type-check` | boolean | `true` | Run pyright type checking |
+| `run-tests` | boolean | `true` | Run pytest with coverage |
+| `run-security` | boolean | `true` | Run bandit security scan |
+| `lint-command` | string | `''` | Custom lint command (overrides ruff) |
+| `format-command` | string | `''` | Custom format command |
+| `type-check-command` | string | `''` | Custom type check command |
+| `test-command` | string | `''` | Custom test command |
+| `fail-fast` | boolean | `true` | Fail immediately on first error |
+| `upload-coverage` | boolean | `true` | Upload coverage to Codecov |
+
 ### python-release.yml
 
 | Input | Type | Default | Description |
@@ -252,7 +294,7 @@ The following enhancements are planned or could be added:
 ### Enhancements to Existing Workflows
 
 - [ ] **OS matrix testing** - Test on ubuntu/macos/windows in CI workflows
-- [ ] **Pre-commit integration** - Run pre-commit hooks in CI
+- [x] **Pre-commit integration** - Run pre-commit hooks in CI (`python-precommit.yml`)
 - [ ] **SBOM generation** - Generate Software Bill of Materials for compliance
 - [ ] **SLSA provenance** - Supply chain security attestations
 - [ ] **Benchmark workflows** - Performance regression testing
