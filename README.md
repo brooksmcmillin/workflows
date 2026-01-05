@@ -1,6 +1,6 @@
 # Reusable GitHub Actions Workflows
 
-This repository contains reusable GitHub Actions workflows for Python, Node.js, and Go projects.
+This repository contains reusable GitHub Actions workflows for Python, Node.js, Go, and Hugo projects.
 
 ## Available Workflows
 
@@ -14,6 +14,14 @@ This repository contains reusable GitHub Actions workflows for Python, Node.js, 
 | `node-security.yml` | Node.js security scanning (npm audit, CodeQL, trivy) |
 | `go-ci.yml` | Go CI with golangci-lint, testing, cross-platform builds |
 | `ansible-ci.yml` | Ansible CI with yamllint, ansible-lint, syntax checking |
+| `hugo-build.yml` | Hugo site build verification |
+| `hugo-accessibility.yml` | Pa11y-ci accessibility testing for Hugo sites |
+| `hugo-spellcheck.yml` | CSpell spelling checks for Hugo content |
+| `hugo-security-headers.yml` | Security header validation with Mozilla Observatory |
+| `hugo-links.yml` | Lychee link checking for Hugo sites |
+| `hugo-html-validation.yml` | HTML5 validation for Hugo output |
+| `hugo-lighthouse.yml` | Lighthouse CI performance and quality testing |
+| `hugo-feed-validation.yml` | RSS/XML feed validation for Hugo sites |
 | `claude.yml` | Claude PR assistant for @claude mentions |
 | `claude-security-review.yml` | Claude-powered security code review |
 
@@ -177,6 +185,157 @@ jobs:
       # playbook-paths: 'site.yml deploy.yml'
 ```
 
+### Hugo Project
+
+For a Hugo static site, create the following workflows:
+
+**Build** (`.github/workflows/build.yml`):
+
+```yaml
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-build.yml@main
+    with:
+      hugo-version: '0.128.0'
+```
+
+**Accessibility** (`.github/workflows/accessibility.yml`):
+
+```yaml
+name: Accessibility Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  accessibility:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-accessibility.yml@main
+    with:
+      hugo-version: '0.128.0'
+      urls: '/ /about/ /blog/'
+```
+
+**Spell Check** (`.github/workflows/spellcheck.yml`):
+
+```yaml
+name: Spell Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  spellcheck:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-spellcheck.yml@main
+```
+
+**Link Check** (`.github/workflows/links.yml`):
+
+```yaml
+name: Check Links
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-links:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-links.yml@main
+    with:
+      hugo-version: '0.128.0'
+      exclude-patterns: 'localhost,linkedin.com'
+```
+
+**HTML Validation** (`.github/workflows/html-validation.yml`):
+
+```yaml
+name: HTML Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-html-validation.yml@main
+    with:
+      hugo-version: '0.128.0'
+```
+
+**Lighthouse CI** (`.github/workflows/lighthouse.yml`):
+
+```yaml
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lighthouse:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-lighthouse.yml@main
+    with:
+      hugo-version: '0.128.0'
+      urls: '/ /about/ /blog/'
+```
+
+**Feed Validation** (`.github/workflows/feed-validation.yml`):
+
+```yaml
+name: Feed Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-feeds:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-feed-validation.yml@main
+    with:
+      hugo-version: '0.128.0'
+```
+
+**Security Headers** (`.github/workflows/security-headers.yml`):
+
+```yaml
+name: Security Headers Check
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+
+jobs:
+  security-headers:
+    uses: YOUR_USERNAME/workflows/.github/workflows/hugo-security-headers.yml@main
+    with:
+      site-url: 'https://example.com'
+```
+
 ### Claude PR Assistant
 
 Create `.github/workflows/claude.yml`:
@@ -296,6 +455,99 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 | `lint-config` | string | `''` | Path to ansible-lint config file |
 | `yamllint-config` | string | `''` | Path to yamllint config file |
 
+### hugo-build.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hugo-version` | string | `'0.128.0'` | Hugo version to use |
+| `extended` | boolean | `true` | Use Hugo extended version |
+| `build-args` | string | `'--gc --minify'` | Additional arguments for hugo build |
+| `submodules` | string | `'true'` | Checkout submodules (true, false, or recursive) |
+
+### hugo-accessibility.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hugo-version` | string | `'0.128.0'` | Hugo version to use |
+| `extended` | boolean | `true` | Use Hugo extended version |
+| `build-args` | string | `'--gc --minify'` | Additional arguments for hugo build |
+| `submodules` | string | `'true'` | Checkout submodules |
+| `node-version` | string | `'20'` | Node.js version |
+| `pa11y-config` | string | `'.pa11yci.json'` | Path to pa11y-ci config file |
+| `urls` | string | `'/ /about/ /blog/'` | Space-separated list of URLs to test |
+| `server-port` | string | `'8080'` | Port to run local server on |
+
+### hugo-spellcheck.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `files` | string | `'content/**/*.md\ncontent/**/*.html'` | File patterns to check (newline-separated) |
+| `config` | string | `'.cspell.json'` | Path to cspell config file |
+| `inline` | string | `'warning'` | Inline handling (error, warning, off) |
+| `strict` | boolean | `false` | Strict mode - fail on any spelling issue |
+
+### hugo-security-headers.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `site-url` | string | **required** | URL of the site to check |
+| `required-headers` | string | `'Strict-Transport-Security X-Content-Type-Options...'` | Space-separated list of required headers |
+| `run-mozilla-observatory` | boolean | `true` | Run Mozilla Observatory scan |
+
+### hugo-links.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hugo-version` | string | `'0.128.0'` | Hugo version to use |
+| `extended` | boolean | `true` | Use Hugo extended version |
+| `build-args` | string | `'--gc --minify'` | Additional arguments for hugo build |
+| `submodules` | string | `'true'` | Checkout submodules |
+| `lychee-args` | string | `'--verbose --no-progress...'` | Additional arguments for lychee |
+| `exclude-patterns` | string | `'localhost,linkedin.com'` | URL patterns to exclude (comma-separated) |
+| `fail-on-error` | boolean | `true` | Fail the workflow on broken links |
+| `path` | string | `'./public/**/*.html'` | Path pattern to check |
+
+### hugo-html-validation.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hugo-version` | string | `'0.128.0'` | Hugo version to use |
+| `extended` | boolean | `true` | Use Hugo extended version |
+| `build-args` | string | `'--gc --minify'` | Additional arguments for hugo build |
+| `submodules` | string | `'true'` | Checkout submodules |
+| `root` | string | `'public/'` | Root directory to validate |
+| `css` | boolean | `false` | Validate CSS files |
+| `blacklist` | string | `''` | Files to exclude from validation |
+
+### hugo-lighthouse.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hugo-version` | string | `'0.128.0'` | Hugo version to use |
+| `extended` | boolean | `true` | Use Hugo extended version |
+| `build-args` | string | `'--gc --minify'` | Additional arguments for hugo build |
+| `submodules` | string | `'true'` | Checkout submodules |
+| `node-version` | string | `'20'` | Node.js version |
+| `lhci-version` | string | `'0.14.x'` | Lighthouse CI version |
+| `urls` | string | `'/ /about/ /blog/'` | Space-separated list of URLs to test |
+| `performance-assertion` | string | `'off'` | Performance category assertion (off, warn, error) |
+| `accessibility-assertion` | string | `'warn'` | Accessibility category assertion |
+| `best-practices-assertion` | string | `'warn'` | Best practices category assertion |
+| `seo-assertion` | string | `'warn'` | SEO category assertion |
+| `upload-target` | string | `'temporary-public-storage'` | Upload target for results |
+
+### hugo-feed-validation.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hugo-version` | string | `'0.128.0'` | Hugo version to use |
+| `extended` | boolean | `true` | Use Hugo extended version |
+| `build-args` | string | `'--gc --minify'` | Additional arguments for hugo build |
+| `submodules` | string | `'true'` | Checkout submodules |
+| `validate-sitemap` | boolean | `true` | Validate sitemap.xml |
+| `validate-rss` | boolean | `true` | Validate RSS feeds |
+| `check-rss-structure` | boolean | `true` | Check RSS feed structure for required elements |
+
 ## Requirements
 
 ### Python Projects
@@ -320,6 +572,13 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 - Standard Ansible directory structure
 - Playbooks with `hosts:` directive for auto-detection
 - Optional: `requirements.yml` for collection dependencies
+
+### Hugo Projects
+
+- Hugo site with standard directory structure
+- For accessibility testing: `.pa11yci.json` config file
+- For spell checking: `.cspell.json` config file
+- Optional: Git submodules for themes
 
 ## Future Improvements
 

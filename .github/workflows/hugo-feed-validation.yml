@@ -1,0 +1,136 @@
+name: Hugo Feed Validation
+
+on:
+  workflow_call:
+    inputs:
+      hugo-version:
+        description: 'Hugo version to use'
+        type: string
+        default: '0.128.0'
+      extended:
+        description: 'Use Hugo extended version'
+        type: boolean
+        default: true
+      build-args:
+        description: 'Additional arguments for hugo build'
+        type: string
+        default: '--gc --minify'
+      submodules:
+        description: 'Checkout submodules (true, false, or recursive)'
+        type: string
+        default: 'true'
+      validate-sitemap:
+        description: 'Validate sitemap.xml'
+        type: boolean
+        default: true
+      validate-rss:
+        description: 'Validate RSS feeds'
+        type: boolean
+        default: true
+      check-rss-structure:
+        description: 'Check RSS feed structure for required elements'
+        type: boolean
+        default: true
+
+jobs:
+  validate-feeds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: ${{ inputs.hugo-version }}
+          extended: ${{ inputs.extended }}
+
+      - name: Build site
+        run: hugo ${{ inputs.build-args }}
+
+      - name: Validate XML files
+        run: |
+          echo "=== Validating XML files ==="
+
+          # Install xmllint
+          sudo apt-get update && sudo apt-get install -y libxml2-utils
+
+          ERRORS=0
+
+          # Validate sitemap.xml
+          if [ "${{ inputs.validate-sitemap }}" = "true" ]; then
+            echo "Checking sitemap.xml..."
+            if xmllint --noout public/sitemap.xml 2>/dev/null; then
+              echo "[PASS] sitemap.xml is well-formed XML"
+            else
+              echo "[FAIL] sitemap.xml has XML errors"
+              xmllint --noout public/sitemap.xml
+              ((ERRORS++))
+            fi
+          fi
+
+          # Validate main RSS feed
+          if [ "${{ inputs.validate-rss }}" = "true" ]; then
+            echo "Checking index.xml (main RSS feed)..."
+            if xmllint --noout public/index.xml 2>/dev/null; then
+              echo "[PASS] index.xml is well-formed XML"
+            else
+              echo "[FAIL] index.xml has XML errors"
+              xmllint --noout public/index.xml
+              ((ERRORS++))
+            fi
+
+            # Find and validate all RSS feeds
+            echo ""
+            echo "=== Checking all RSS feeds ==="
+            for feed in $(find public -name "index.xml" -type f); do
+              if xmllint --noout "$feed" 2>/dev/null; then
+                echo "[PASS] $feed"
+              else
+                echo "[FAIL] $feed"
+                ((ERRORS++))
+              fi
+            done
+          fi
+
+          echo ""
+          echo "=== Summary ==="
+          if [ $ERRORS -gt 0 ]; then
+            echo "Found $ERRORS XML validation errors"
+            exit 1
+          else
+            echo "All XML files are well-formed"
+          fi
+
+      - name: Validate RSS feed structure
+        if: ${{ inputs.check-rss-structure }}
+        run: |
+          echo "=== Checking RSS feed structure ==="
+
+          # Check that required RSS elements exist
+          check_rss_element() {
+            local file=$1
+            local element=$2
+            if grep -q "<$element" "$file"; then
+              echo "[PASS] $file contains <$element>"
+              return 0
+            else
+              echo "[WARN] $file missing <$element>"
+              return 1
+            fi
+          }
+
+          echo "Checking main feed structure..."
+          check_rss_element "public/index.xml" "rss"
+          check_rss_element "public/index.xml" "channel"
+          check_rss_element "public/index.xml" "title"
+          check_rss_element "public/index.xml" "link"
+          check_rss_element "public/index.xml" "description"
+
+          echo ""
+          echo "Checking sitemap structure..."
+          check_rss_element "public/sitemap.xml" "urlset"
+          check_rss_element "public/sitemap.xml" "url"
+          check_rss_element "public/sitemap.xml" "loc"

@@ -1,0 +1,85 @@
+name: Hugo Security Headers
+
+on:
+  workflow_call:
+    inputs:
+      site-url:
+        description: 'URL of the site to check (e.g., https://example.com)'
+        type: string
+        required: true
+      required-headers:
+        description: 'Space-separated list of required security headers'
+        type: string
+        default: 'Strict-Transport-Security X-Content-Type-Options X-Frame-Options Content-Security-Policy Referrer-Policy Permissions-Policy'
+      run-mozilla-observatory:
+        description: 'Run Mozilla Observatory scan'
+        type: boolean
+        default: true
+
+jobs:
+  security-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check security headers
+        run: |
+          echo "Checking security headers for ${{ inputs.site-url }}..."
+
+          # Fetch headers
+          HEADERS=$(curl -sI ${{ inputs.site-url }})
+
+          echo "=== Response Headers ==="
+          echo "$HEADERS"
+          echo ""
+
+          # Check for important security headers
+          echo "=== Security Header Analysis ==="
+
+          check_header() {
+            local header=$1
+            if echo "$HEADERS" | grep -qi "^$header:"; then
+              echo "[PASS] $header is present"
+              return 0
+            else
+              echo "[WARN] $header is missing"
+              return 1
+            fi
+          }
+
+          WARNINGS=0
+
+          for header in ${{ inputs.required-headers }}; do
+            check_header "$header" || ((WARNINGS++))
+          done
+
+          echo ""
+          echo "=== Summary ==="
+          if [ $WARNINGS -gt 0 ]; then
+            echo "Found $WARNINGS missing security headers"
+            echo "Consider adding these headers for improved security"
+          else
+            echo "All recommended security headers are present"
+          fi
+
+      - name: Check with Mozilla Observatory API
+        if: ${{ inputs.run-mozilla-observatory }}
+        run: |
+          # Extract hostname from URL
+          HOSTNAME=$(echo "${{ inputs.site-url }}" | sed -e 's|https\?://||' -e 's|/.*||')
+
+          echo "Requesting Mozilla Observatory scan for $HOSTNAME..."
+
+          # Trigger a new scan
+          SCAN=$(curl -s -X POST "https://http-observatory.security.mozilla.org/api/v1/analyze?host=$HOSTNAME&rescan=true")
+
+          # Wait for scan to complete
+          sleep 10
+
+          # Get results
+          RESULT=$(curl -s "https://http-observatory.security.mozilla.org/api/v1/analyze?host=$HOSTNAME")
+
+          echo "=== Mozilla Observatory Results ==="
+          echo "$RESULT" | jq -r '
+            "Grade: \(.grade // "Pending")",
+            "Score: \(.score // "N/A")/100",
+            "Tests Passed: \(.tests_passed // "N/A")/\(.tests_quantity // "N/A")"
+          ' 2>/dev/null || echo "$RESULT"

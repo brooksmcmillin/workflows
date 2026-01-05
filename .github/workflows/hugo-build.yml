@@ -1,0 +1,39 @@
+name: Hugo Build
+
+on:
+  workflow_call:
+    inputs:
+      hugo-version:
+        description: 'Hugo version to use'
+        type: string
+        default: '0.128.0'
+      extended:
+        description: 'Use Hugo extended version'
+        type: boolean
+        default: true
+      build-args:
+        description: 'Additional arguments for hugo build'
+        type: string
+        default: '--gc --minify'
+      submodules:
+        description: 'Checkout submodules (true, false, or recursive)'
+        type: string
+        default: 'true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: ${{ inputs.hugo-version }}
+          extended: ${{ inputs.extended }}
+
+      - name: Build
+        run: hugo ${{ inputs.build-args }}

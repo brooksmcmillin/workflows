@@ -1,0 +1,74 @@
+name: Hugo Link Check
+
+on:
+  workflow_call:
+    inputs:
+      hugo-version:
+        description: 'Hugo version to use'
+        type: string
+        default: '0.128.0'
+      extended:
+        description: 'Use Hugo extended version'
+        type: boolean
+        default: true
+      build-args:
+        description: 'Additional arguments for hugo build'
+        type: string
+        default: '--gc --minify'
+      submodules:
+        description: 'Checkout submodules (true, false, or recursive)'
+        type: string
+        default: 'true'
+      lychee-args:
+        description: 'Additional arguments for lychee'
+        type: string
+        default: '--verbose --no-progress --scheme https --scheme http'
+      exclude-patterns:
+        description: 'URL patterns to exclude (comma-separated)'
+        type: string
+        default: 'localhost,linkedin.com'
+      fail-on-error:
+        description: 'Fail the workflow on broken links'
+        type: boolean
+        default: true
+      path:
+        description: 'Path pattern to check'
+        type: string
+        default: './public/**/*.html'
+
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: ${{ inputs.hugo-version }}
+          extended: ${{ inputs.extended }}
+
+      - name: Build site
+        run: hugo ${{ inputs.build-args }}
+
+      - name: Build exclude args
+        id: exclude
+        run: |
+          EXCLUDE_ARGS=""
+          IFS=',' read -ra PATTERNS <<< "${{ inputs.exclude-patterns }}"
+          for pattern in "${PATTERNS[@]}"; do
+            EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude '$pattern'"
+          done
+          echo "args=$EXCLUDE_ARGS" >> $GITHUB_OUTPUT
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            ${{ inputs.lychee-args }}
+            ${{ steps.exclude.outputs.args }}
+            '${{ inputs.path }}'
+          fail: ${{ inputs.fail-on-error }}

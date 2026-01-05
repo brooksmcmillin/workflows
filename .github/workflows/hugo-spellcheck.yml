@@ -1,0 +1,37 @@
+name: Hugo Spell Check
+
+on:
+  workflow_call:
+    inputs:
+      files:
+        description: 'File patterns to check (newline-separated)'
+        type: string
+        default: |
+          content/**/*.md
+          content/**/*.html
+      config:
+        description: 'Path to cspell config file'
+        type: string
+        default: '.cspell.json'
+      inline:
+        description: 'Inline handling (error, warning, off)'
+        type: string
+        default: 'warning'
+      strict:
+        description: 'Strict mode - fail on any spelling issue'
+        type: boolean
+        default: false
+
+jobs:
+  spellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check spelling
+        uses: streetsidesoftware/cspell-action@v6
+        with:
+          files: ${{ inputs.files }}
+          config: ${{ inputs.config }}
+          inline: ${{ inputs.inline }}
+          strict: ${{ inputs.strict }}

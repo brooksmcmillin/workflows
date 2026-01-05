@@ -1,0 +1,95 @@
+name: Hugo Lighthouse CI
+
+on:
+  workflow_call:
+    inputs:
+      hugo-version:
+        description: 'Hugo version to use'
+        type: string
+        default: '0.128.0'
+      extended:
+        description: 'Use Hugo extended version'
+        type: boolean
+        default: true
+      build-args:
+        description: 'Additional arguments for hugo build'
+        type: string
+        default: '--gc --minify'
+      submodules:
+        description: 'Checkout submodules (true, false, or recursive)'
+        type: string
+        default: 'true'
+      node-version:
+        description: 'Node.js version'
+        type: string
+        default: '20'
+      lhci-version:
+        description: 'Lighthouse CI version'
+        type: string
+        default: '0.14.x'
+      urls:
+        description: 'Space-separated list of URLs to test (relative paths)'
+        type: string
+        default: '/ /about/ /blog/'
+      performance-assertion:
+        description: 'Performance category assertion (off, warn, error)'
+        type: string
+        default: 'off'
+      accessibility-assertion:
+        description: 'Accessibility category assertion (off, warn, error)'
+        type: string
+        default: 'warn'
+      best-practices-assertion:
+        description: 'Best practices category assertion (off, warn, error)'
+        type: string
+        default: 'warn'
+      seo-assertion:
+        description: 'SEO category assertion (off, warn, error)'
+        type: string
+        default: 'warn'
+      upload-target:
+        description: 'Upload target for results'
+        type: string
+        default: 'temporary-public-storage'
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: ${{ inputs.hugo-version }}
+          extended: ${{ inputs.extended }}
+
+      - name: Build site
+        run: hugo ${{ inputs.build-args }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@${{ inputs.lhci-version }}
+
+      - name: Run Lighthouse
+        run: |
+          URL_ARGS=""
+          for url in ${{ inputs.urls }}; do
+            URL_ARGS="$URL_ARGS --collect.url=$url"
+          done
+
+          lhci autorun \
+            --collect.staticDistDir=./public \
+            $URL_ARGS \
+            --assert.assertions.categories:performance=${{ inputs.performance-assertion }} \
+            --assert.assertions.categories:accessibility=${{ inputs.accessibility-assertion }} \
+            --assert.assertions.categories:best-practices=${{ inputs.best-practices-assertion }} \
+            --assert.assertions.categories:seo=${{ inputs.seo-assertion }} \
+            --upload.target=${{ inputs.upload-target }}
