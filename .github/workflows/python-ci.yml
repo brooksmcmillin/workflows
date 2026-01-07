@@ -47,6 +47,10 @@ on:
         description: 'Skip package installation test (useful for packages with private git dependencies)'
         type: boolean
         default: false
+      pre-install-command:
+        description: 'Command to run before uv sync (e.g., to override local path dependencies with git sources)'
+        type: string
+        default: ''
     secrets:
       CODECOV_TOKEN:
         description: 'Codecov token for coverage upload'
@@ -67,6 +71,10 @@ jobs:
 
       - name: Set up Python
         run: uv python install 3.11
+
+      - name: Run pre-install command
+        if: ${{ inputs.pre-install-command != '' }}
+        run: ${{ inputs.pre-install-command }}
 
       - name: Install dependencies
         run: uv sync
@@ -91,6 +99,10 @@ jobs:
 
       - name: Set up Python
         run: uv python install 3.11
+
+      - name: Run pre-install command
+        if: ${{ inputs.pre-install-command != '' }}
+        run: ${{ inputs.pre-install-command }}
 
       - name: Install dependencies
         run: uv sync
@@ -122,6 +134,10 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
+      - name: Run pre-install command
+        if: ${{ inputs.pre-install-command != '' }}
+        run: ${{ inputs.pre-install-command }}
+
       - name: Install dependencies
         run: uv sync
 
@@ -150,6 +166,10 @@ jobs:
 
       - name: Set up Python
         run: uv python install 3.11
+
+      - name: Run pre-install command
+        if: ${{ inputs.pre-install-command != '' }}
+        run: ${{ inputs.pre-install-command }}
 
       - name: Build package
         run: uv build
