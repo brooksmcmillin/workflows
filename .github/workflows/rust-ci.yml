@@ -1,0 +1,185 @@
+name: Rust CI
+
+on:
+  workflow_call:
+    inputs:
+      rust-version:
+        description: 'Rust toolchain version to use'
+        type: string
+        default: 'stable'
+      rust-versions:
+        description: 'JSON array of Rust versions to test (overrides rust-version if set)'
+        type: string
+        default: ''
+      run-lint:
+        description: 'Run clippy linting'
+        type: boolean
+        default: true
+      run-format:
+        description: 'Run rustfmt format check'
+        type: boolean
+        default: true
+      run-tests:
+        description: 'Run cargo test'
+        type: boolean
+        default: true
+      run-build:
+        description: 'Build for multiple platforms'
+        type: boolean
+        default: false
+      coverage-rust-version:
+        description: 'Rust version to use for coverage upload'
+        type: string
+        default: 'stable'
+      clippy-args:
+        description: 'Additional arguments for clippy'
+        type: string
+        default: '-- -D warnings'
+      test-args:
+        description: 'Additional arguments for cargo test'
+        type: string
+        default: ''
+      build-targets:
+        description: 'JSON array of build targets'
+        type: string
+        default: '[{"target":"x86_64-unknown-linux-gnu"},{"target":"x86_64-apple-darwin"},{"target":"aarch64-apple-darwin"},{"target":"x86_64-pc-windows-msvc"}]'
+      binary-name:
+        description: 'Name of the binary to build (if run-build is true)'
+        type: string
+        default: ''
+      fail-fast:
+        description: 'Fail fast on first error in matrix'
+        type: boolean
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov token for coverage upload'
+        required: false
+
+jobs:
+  lint:
+    name: Clippy
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-lint }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features ${{ inputs.clippy-args }}
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-format }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+          components: rustfmt
+
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
+
+  test:
+    name: Test${{ inputs.rust-versions != '' && format(' Rust {0}', matrix.rust-version) || '' }}
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-tests }}
+    strategy:
+      fail-fast: ${{ inputs.fail-fast }}
+      matrix:
+        rust-version: ${{ inputs.rust-versions != '' && fromJson(inputs.rust-versions) || fromJson(format('["{0}"]', inputs.rust-version)) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust-version }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.rust-version }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.rust-version }}-
+
+      - name: Run tests
+        run: cargo test --all-features ${{ inputs.test-args }}
+
+      - name: Install cargo-llvm-cov
+        if: matrix.rust-version == inputs.coverage-rust-version
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Generate coverage report
+        if: matrix.rust-version == inputs.coverage-rust-version
+        run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        if: matrix.rust-version == inputs.coverage-rust-version
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build ${{ matrix.target.target }}
+    runs-on: ${{ contains(matrix.target.target, 'windows') && 'windows-latest' || contains(matrix.target.target, 'apple') && 'macos-latest' || 'ubuntu-latest' }}
+    if: ${{ inputs.run-build }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(inputs.build-targets) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+          targets: ${{ matrix.target.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-build-${{ matrix.target.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-${{ matrix.target.target }}-
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target.target }}
+
+      - name: Upload build artifacts
+        if: ${{ inputs.binary-name != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.binary-name }}-${{ matrix.target.target }}
+          path: target/${{ matrix.target.target }}/release/${{ inputs.binary-name }}${{ contains(matrix.target.target, 'windows') && '.exe' || '' }}

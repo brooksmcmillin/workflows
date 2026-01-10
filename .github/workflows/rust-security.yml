@@ -1,0 +1,172 @@
+name: Rust Security
+
+on:
+  workflow_call:
+    inputs:
+      rust-version:
+        description: 'Rust toolchain version for security scanning'
+        type: string
+        default: 'stable'
+      run-cargo-audit:
+        description: 'Run cargo-audit for vulnerability scanning'
+        type: boolean
+        default: true
+      run-cargo-deny:
+        description: 'Run cargo-deny for license and advisory checks'
+        type: boolean
+        default: true
+      run-trivy:
+        description: 'Run Trivy filesystem scan'
+        type: boolean
+        default: true
+      run-codeql:
+        description: 'Run CodeQL analysis'
+        type: boolean
+        default: false
+      run-semgrep:
+        description: 'Run Semgrep security scan'
+        type: boolean
+        default: true
+      deny-config:
+        description: 'Path to deny.toml config file (if using cargo-deny)'
+        type: string
+        default: ''
+    secrets:
+      SEMGREP_APP_TOKEN:
+        description: 'Semgrep app token for publishing results'
+        required: false
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  cargo-audit:
+    name: Cargo Audit
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-cargo-audit }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo-audit
+        run: cargo audit
+
+  cargo-deny:
+    name: Cargo Deny
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-cargo-deny }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: ${{ inputs.deny-config != '' && format('--config {0}', inputs.deny-config) || '' }}
+
+  semgrep:
+    name: Semgrep Security Scan
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-semgrep }}
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep scan
+        run: semgrep scan --config=p/security-audit --config=p/secrets --config=p/rust --sarif --output=semgrep.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+  trivy:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-trivy }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy and generate SARIF
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: trivy
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-codeql }}
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          queries: security-extended
+
+      - name: Build for CodeQL
+        run: cargo build --release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [cargo-audit, cargo-deny, semgrep, trivy]
+    if: always()
+    steps:
+      - name: Create summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Cargo Audit | ${{ needs.cargo-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cargo Deny | ${{ needs.cargo-deny.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Semgrep | ${{ needs.semgrep.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Scan | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY
