@@ -1,0 +1,353 @@
+# Reusable Rust Pre-commit Workflow
+# Standard pre-commit checks for Rust projects including linting, formatting,
+# testing, building, and security scans.
+#
+# Usage:
+#   jobs:
+#     precommit:
+#       uses: brooksmcmillin/workflows/.github/workflows/rust-precommit.yml@main
+#       secrets:
+#         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+name: Rust Pre-commit
+
+on:
+  workflow_call:
+    inputs:
+      rust-version:
+        description: 'Rust toolchain version to use for checks'
+        type: string
+        default: 'stable'
+      # Feature flags
+      run-lint:
+        description: 'Run clippy linting'
+        type: boolean
+        default: true
+      run-format:
+        description: 'Run rustfmt format checks'
+        type: boolean
+        default: true
+      run-tests:
+        description: 'Run cargo test'
+        type: boolean
+        default: true
+      run-build:
+        description: 'Run cargo build'
+        type: boolean
+        default: true
+      run-security:
+        description: 'Run security checks (cargo-audit)'
+        type: boolean
+        default: true
+      run-doc:
+        description: 'Run cargo doc to check documentation'
+        type: boolean
+        default: false
+      # Command customization
+      clippy-args:
+        description: 'Additional arguments for clippy'
+        type: string
+        default: '-- -D warnings'
+      test-args:
+        description: 'Additional arguments for cargo test'
+        type: string
+        default: ''
+      build-args:
+        description: 'Additional arguments for cargo build'
+        type: string
+        default: ''
+      # Additional options
+      fail-fast:
+        description: 'Fail immediately on first error'
+        type: boolean
+        default: true
+      upload-coverage:
+        description: 'Upload coverage to Codecov'
+        type: boolean
+        default: true
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov token for coverage upload'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-lint }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-lint-
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features ${{ inputs.clippy-args }}
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-format }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+          components: rustfmt
+
+      - name: Run rustfmt check
+        run: cargo fmt --all -- --check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-tests }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-
+
+      - name: Run tests
+        run: cargo test --all-features ${{ inputs.test-args }}
+
+      - name: Install cargo-llvm-cov
+        if: ${{ inputs.upload-coverage }}
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Generate coverage report
+        if: ${{ inputs.upload-coverage }}
+        run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        if: ${{ inputs.upload-coverage }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: false
+          verbose: true
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-build }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
+
+      - name: Run build
+        run: cargo build --all-features ${{ inputs.build-args }}
+
+  doc:
+    name: Documentation
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-doc }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-doc-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-doc-
+
+      - name: Check documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --no-deps --all-features
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-security }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ inputs.rust-version }}
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo-audit
+        run: |
+          cargo audit --json > cargo-audit.json || true
+          cargo audit
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-audit-results
+          path: cargo-audit.json
+          retention-days: 30
+
+  summary:
+    name: Pre-commit Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lint, format, test, build, doc, security]
+    steps:
+      - name: Check results
+        run: |
+          echo "## Pre-commit Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Lint
+          if [ "${{ inputs.run-lint }}" == "true" ]; then
+            if [ "${{ needs.lint.result }}" == "success" ]; then
+              echo "| Lint | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.lint.result }}" == "skipped" ]; then
+              echo "| Lint | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Lint | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Lint | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Format
+          if [ "${{ inputs.run-format }}" == "true" ]; then
+            if [ "${{ needs.format.result }}" == "success" ]; then
+              echo "| Format | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.format.result }}" == "skipped" ]; then
+              echo "| Format | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Format | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Format | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Test
+          if [ "${{ inputs.run-tests }}" == "true" ]; then
+            if [ "${{ needs.test.result }}" == "success" ]; then
+              echo "| Test | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.test.result }}" == "skipped" ]; then
+              echo "| Test | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Test | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Test | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Build
+          if [ "${{ inputs.run-build }}" == "true" ]; then
+            if [ "${{ needs.build.result }}" == "success" ]; then
+              echo "| Build | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.build.result }}" == "skipped" ]; then
+              echo "| Build | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Build | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Build | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Doc
+          if [ "${{ inputs.run-doc }}" == "true" ]; then
+            if [ "${{ needs.doc.result }}" == "success" ]; then
+              echo "| Documentation | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.doc.result }}" == "skipped" ]; then
+              echo "| Documentation | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Documentation | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Documentation | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Security
+          if [ "${{ inputs.run-security }}" == "true" ]; then
+            if [ "${{ needs.security.result }}" == "success" ]; then
+              echo "| Security | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.security.result }}" == "skipped" ]; then
+              echo "| Security | :fast_forward: Skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Security | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| Security | :fast_forward: Disabled |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail if any check failed
+        if: ${{ inputs.fail-fast }}
+        run: |
+          if [ "${{ needs.lint.result }}" == "failure" ] || \
+             [ "${{ needs.format.result }}" == "failure" ] || \
+             [ "${{ needs.test.result }}" == "failure" ] || \
+             [ "${{ needs.build.result }}" == "failure" ] || \
+             [ "${{ needs.doc.result }}" == "failure" ] || \
+             [ "${{ needs.security.result }}" == "failure" ]; then
+            echo "One or more checks failed"
+            exit 1
+          fi
