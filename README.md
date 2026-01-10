@@ -1,6 +1,6 @@
 # Reusable GitHub Actions Workflows
 
-This repository contains reusable GitHub Actions workflows for Python, Node.js, Go, and Hugo projects.
+This repository contains reusable GitHub Actions workflows for Python, Node.js, Go, Rust, and Hugo projects.
 
 ## Available Workflows
 
@@ -13,6 +13,9 @@ This repository contains reusable GitHub Actions workflows for Python, Node.js, 
 | `node-ci.yml` | Node.js CI with npm, linting, testing |
 | `node-security.yml` | Node.js security scanning (npm audit, CodeQL, trivy) |
 | `go-ci.yml` | Go CI with golangci-lint, testing, cross-platform builds |
+| `rust-ci.yml` | Rust CI with clippy, rustfmt, testing with coverage, cross-platform builds |
+| `rust-precommit.yml` | Fast pre-commit checks (clippy, rustfmt, test, cargo-audit) for PR validation |
+| `rust-security.yml` | Rust security scanning (cargo-audit, cargo-deny, semgrep, trivy) |
 | `ansible-ci.yml` | Ansible CI with yamllint, ansible-lint, syntax checking |
 | `hugo-build.yml` | Hugo site build verification |
 | `hugo-accessibility.yml` | Pa11y-ci accessibility testing for Hugo sites |
@@ -160,6 +163,69 @@ jobs:
       run-build: true
       binary-name: myapp
       binary-path: ./cmd/myapp
+```
+
+### Rust Project
+
+Create `.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: YOUR_USERNAME/workflows/.github/workflows/rust-ci.yml@main
+    with:
+      rust-versions: '["stable", "beta"]'
+      run-build: true
+      binary-name: myapp
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+```
+
+Create `.github/workflows/security.yml`:
+
+```yaml
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+
+jobs:
+  security:
+    uses: YOUR_USERNAME/workflows/.github/workflows/rust-security.yml@main
+```
+
+Create `.github/workflows/precommit.yml` (lightweight alternative to full CI):
+
+```yaml
+name: Pre-commit
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  precommit:
+    uses: YOUR_USERNAME/workflows/.github/workflows/rust-precommit.yml@main
+    with:
+      rust-version: 'stable'
+      # Optional: customize checks
+      # run-security: false  # Disable cargo-audit if using rust-security.yml separately
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 ```
 
 ### Ansible Project
@@ -442,6 +508,50 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 | `binary-name` | string | `''` | Binary name for builds |
 | `binary-path` | string | `'./cmd/...'` | Path to main package |
 
+### rust-ci.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `rust-version` | string | `'stable'` | Rust toolchain version |
+| `rust-versions` | string | `''` | JSON array of Rust versions (overrides rust-version) |
+| `run-lint` | boolean | `true` | Run clippy linting |
+| `run-format` | boolean | `true` | Run rustfmt format check |
+| `run-tests` | boolean | `true` | Run cargo test |
+| `run-build` | boolean | `false` | Build for multiple platforms |
+| `clippy-args` | string | `'-- -D warnings'` | Additional arguments for clippy |
+| `test-args` | string | `''` | Additional arguments for cargo test |
+| `build-targets` | string | `'[{"target":"x86_64-unknown-linux-gnu"},...]'` | JSON array of build targets |
+| `binary-name` | string | `''` | Binary name for builds |
+
+### rust-precommit.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `rust-version` | string | `'stable'` | Rust toolchain version |
+| `run-lint` | boolean | `true` | Run clippy linting |
+| `run-format` | boolean | `true` | Run rustfmt format check |
+| `run-tests` | boolean | `true` | Run cargo test |
+| `run-build` | boolean | `true` | Run cargo build |
+| `run-security` | boolean | `true` | Run cargo-audit security scan |
+| `run-doc` | boolean | `false` | Run cargo doc to check documentation |
+| `clippy-args` | string | `'-- -D warnings'` | Additional arguments for clippy |
+| `test-args` | string | `''` | Additional arguments for cargo test |
+| `build-args` | string | `''` | Additional arguments for cargo build |
+| `fail-fast` | boolean | `true` | Fail immediately on first error |
+| `upload-coverage` | boolean | `true` | Upload coverage to Codecov |
+
+### rust-security.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `rust-version` | string | `'stable'` | Rust toolchain version |
+| `run-cargo-audit` | boolean | `true` | Run cargo-audit vulnerability scanning |
+| `run-cargo-deny` | boolean | `true` | Run cargo-deny license and advisory checks |
+| `run-trivy` | boolean | `true` | Run Trivy filesystem scan |
+| `run-codeql` | boolean | `false` | Run CodeQL analysis |
+| `run-semgrep` | boolean | `true` | Run Semgrep security scan |
+| `deny-config` | string | `''` | Path to deny.toml config file |
+
 ### ansible-ci.yml
 
 | Input | Type | Default | Description |
@@ -566,6 +676,12 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 ### Go Projects
 
 - Use Go modules (`go.mod`)
+
+### Rust Projects
+
+- Use Cargo with `Cargo.toml` and `Cargo.lock`
+- For cargo-deny: optional `deny.toml` config file
+- For coverage: `cargo-llvm-cov` is installed automatically
 
 ### Ansible Projects
 
