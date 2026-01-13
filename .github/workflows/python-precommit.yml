@@ -79,6 +79,10 @@ on:
         description: 'Upload coverage to Codecov'
         type: boolean
         default: true
+      working-directory:
+        description: 'Working directory for all commands (defaults to repository root)'
+        type: string
+        default: '.'
     secrets:
       CODECOV_TOKEN:
         description: 'Codecov token for coverage upload'
@@ -92,6 +96,9 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     if: ${{ inputs.run-lint }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -119,6 +126,9 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     if: ${{ inputs.run-format }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -146,6 +156,9 @@ jobs:
     name: Type Check
     runs-on: ubuntu-latest
     if: ${{ inputs.run-type-check }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -173,6 +186,9 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     if: ${{ inputs.run-tests }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -213,6 +229,9 @@ jobs:
     name: Security
     runs-on: ubuntu-latest
     if: ${{ inputs.run-security }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

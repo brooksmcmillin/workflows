@@ -51,6 +51,10 @@ on:
         description: 'Command to run before uv sync (e.g., to override local path dependencies with git sources)'
         type: string
         default: ''
+      working-directory:
+        description: 'Working directory for all commands (defaults to repository root)'
+        type: string
+        default: '.'
     secrets:
       CODECOV_TOKEN:
         description: 'Codecov token for coverage upload'
@@ -61,6 +65,9 @@ jobs:
     name: Code Quality
     runs-on: ubuntu-latest
     if: ${{ inputs.run-lint }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
 
@@ -89,6 +96,9 @@ jobs:
     name: Type Check
     runs-on: ubuntu-latest
     if: ${{ inputs.run-type-check }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
 
@@ -119,6 +129,9 @@ jobs:
     name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     if: ${{ inputs.run-tests }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
       matrix:
@@ -156,6 +169,9 @@ jobs:
     name: Build Package
     runs-on: ubuntu-latest
     if: ${{ inputs.run-build }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
 
