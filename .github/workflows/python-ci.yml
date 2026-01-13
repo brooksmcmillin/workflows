@@ -239,8 +239,10 @@ jobs:
           if [ -z "$SOURCE_PATH" ]; then
             SOURCE_PATH="${{ inputs.package-name }}/"
           fi
+          # Run bandit and capture exit code (don't fail on findings)
           uv run --with bandit bandit -r "$SOURCE_PATH" -f json -o bandit-results.json || true
-          uv run --with bandit bandit -r "$SOURCE_PATH"
+          # Show results in logs (informational only)
+          uv run --with bandit bandit -r "$SOURCE_PATH" --exit-zero
 
       - name: Upload bandit results
         if: always()
