@@ -85,10 +85,13 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
-        if: ${{ secrets.GH_PAT != '' }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global credential.helper store
-          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+          if [ -n "$GH_PAT" ]; then
+            git config --global credential.helper store
+            echo "https://x-access-token:$GH_PAT@github.com" > ~/.git-credentials
+          fi
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -124,10 +127,13 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
-        if: ${{ secrets.GH_PAT != '' }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global credential.helper store
-          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+          if [ -n "$GH_PAT" ]; then
+            git config --global credential.helper store
+            echo "https://x-access-token:$GH_PAT@github.com" > ~/.git-credentials
+          fi
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -169,10 +175,13 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
-        if: ${{ secrets.GH_PAT != '' }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global credential.helper store
-          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+          if [ -n "$GH_PAT" ]; then
+            git config --global credential.helper store
+            echo "https://x-access-token:$GH_PAT@github.com" > ~/.git-credentials
+          fi
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -213,10 +222,13 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
-        if: ${{ secrets.GH_PAT != '' }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global credential.helper store
-          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+          if [ -n "$GH_PAT" ]; then
+            git config --global credential.helper store
+            echo "https://x-access-token:$GH_PAT@github.com" > ~/.git-credentials
+          fi
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -256,10 +268,13 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
-        if: ${{ secrets.GH_PAT != '' }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global credential.helper store
-          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+          if [ -n "$GH_PAT" ]; then
+            git config --global credential.helper store
+            echo "https://x-access-token:$GH_PAT@github.com" > ~/.git-credentials
+          fi
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
