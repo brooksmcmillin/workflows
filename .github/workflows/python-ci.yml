@@ -85,6 +85,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
+        if: ${{ secrets.GH_PAT != '' }}
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
@@ -123,6 +124,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
+        if: ${{ secrets.GH_PAT != '' }}
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
@@ -167,6 +169,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
+        if: ${{ secrets.GH_PAT != '' }}
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
@@ -210,6 +213,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
+        if: ${{ secrets.GH_PAT != '' }}
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
@@ -252,6 +256,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure git credentials
+        if: ${{ secrets.GH_PAT != '' }}
         run: |
           git config --global credential.helper store
           echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
