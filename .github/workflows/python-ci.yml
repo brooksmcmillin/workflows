@@ -82,6 +82,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git credentials
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -93,15 +98,9 @@ jobs:
       - name: Run pre-install command
         if: ${{ inputs.pre-install-command != '' }}
         run: ${{ inputs.pre-install-command }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Install dependencies
         run: uv sync
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Run ruff linter
         run: uv run ruff check --output-format=github .
@@ -119,6 +118,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git credentials
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -130,15 +134,9 @@ jobs:
       - name: Run pre-install command
         if: ${{ inputs.pre-install-command != '' }}
         run: ${{ inputs.pre-install-command }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Install dependencies
         run: uv sync
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Run pyright
         if: ${{ inputs.type-checker == 'pyright' }}
@@ -162,6 +160,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git credentials
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -173,15 +176,9 @@ jobs:
       - name: Run pre-install command
         if: ${{ inputs.pre-install-command != '' }}
         run: ${{ inputs.pre-install-command }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Install dependencies
         run: uv sync
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Run tests with coverage
         run: uv run pytest ${{ inputs.test-path }} -v --cov=${{ inputs.package-name }} --cov-report=xml --cov-report=term-missing
@@ -204,6 +201,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git credentials
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -215,9 +217,6 @@ jobs:
       - name: Run pre-install command
         if: ${{ inputs.pre-install-command != '' }}
         run: ${{ inputs.pre-install-command }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Build package
         run: uv build
@@ -242,6 +241,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git credentials
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -253,15 +257,9 @@ jobs:
       - name: Run pre-install command
         if: ${{ inputs.pre-install-command != '' }}
         run: ${{ inputs.pre-install-command }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Install dependencies
         run: uv sync
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Run bandit security scan
         run: |

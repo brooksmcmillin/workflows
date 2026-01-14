@@ -63,6 +63,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git credentials
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -74,15 +79,9 @@ jobs:
       - name: Run pre-install command
         if: ${{ inputs.pre-install-command != '' }}
         run: ${{ inputs.pre-install-command }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Install dependencies
         run: uv sync
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Run Bandit security linter
         if: ${{ inputs.run-bandit }}
