@@ -63,9 +63,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure git for private repos
-        run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
-
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -77,9 +74,15 @@ jobs:
       - name: Run pre-install command
         if: ${{ inputs.pre-install-command != '' }}
         run: ${{ inputs.pre-install-command }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Install dependencies
         run: uv sync
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          UV_GIT_AUTH: ${{ secrets.GH_PAT }}
 
       - name: Run Bandit security linter
         if: ${{ inputs.run-bandit }}
