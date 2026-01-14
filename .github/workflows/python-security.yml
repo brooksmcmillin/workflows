@@ -212,7 +212,7 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
-    if: ${{ inputs.run-dependency-review && github.event_name == 'pull_request' }}
+    if: ${{ inputs.run-dependency-review && github.event_name == 'pull_request' && github.repository_visibility == 'public' }}
     steps:
       - uses: actions/checkout@v4
 
