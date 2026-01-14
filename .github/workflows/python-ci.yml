@@ -81,6 +81,8 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Configure git credentials
         run: |
@@ -117,6 +119,8 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Configure git credentials
         run: |
@@ -159,6 +163,8 @@ jobs:
         python-version: ${{ fromJson(inputs.python-versions) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Configure git credentials
         run: |
@@ -200,6 +206,8 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Configure git credentials
         run: |
@@ -240,6 +248,8 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Configure git credentials
         run: |
