@@ -83,7 +83,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure git for private repos
-        if: ${{ secrets.GH_PAT != '' }}
         run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
@@ -118,7 +117,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure git for private repos
-        if: ${{ secrets.GH_PAT != '' }}
         run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
@@ -159,7 +157,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure git for private repos
-        if: ${{ secrets.GH_PAT != '' }}
         run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
@@ -199,7 +196,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure git for private repos
-        if: ${{ secrets.GH_PAT != '' }}
         run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
@@ -238,7 +234,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure git for private repos
-        if: ${{ secrets.GH_PAT != '' }}
         run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
