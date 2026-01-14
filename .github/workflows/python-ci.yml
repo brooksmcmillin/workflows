@@ -67,6 +67,9 @@ on:
       CODECOV_TOKEN:
         description: 'Codecov token for coverage upload'
         required: false
+      GH_PAT:
+        description: 'GitHub PAT for private repo access (required if pre-install-command references private repos)'
+        required: false
 
 jobs:
   lint:
@@ -78,6 +81,10 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure git for private repos
+        if: ${{ secrets.GH_PAT != '' }}
+        run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -109,6 +116,10 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure git for private repos
+        if: ${{ secrets.GH_PAT != '' }}
+        run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -147,6 +158,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git for private repos
+        if: ${{ secrets.GH_PAT != '' }}
+        run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -183,6 +198,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git for private repos
+        if: ${{ secrets.GH_PAT != '' }}
+        run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -217,6 +236,10 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure git for private repos
+        if: ${{ secrets.GH_PAT != '' }}
+        run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5

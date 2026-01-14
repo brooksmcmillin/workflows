@@ -39,9 +39,16 @@ on:
         description: 'Comma-separated list of allowed licenses'
         type: string
         default: 'MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Python-2.0'
+      pre-install-command:
+        description: 'Command to run before uv sync (e.g., to override local path dependencies with git sources)'
+        type: string
+        default: ''
     secrets:
       SEMGREP_APP_TOKEN:
         description: 'Semgrep app token for publishing results'
+        required: false
+      GH_PAT:
+        description: 'GitHub PAT for private repo access (required if pre-install-command references private repos)'
         required: false
 
 permissions:
@@ -56,6 +63,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure git for private repos
+        if: ${{ secrets.GH_PAT != '' }}
+        run: git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -63,6 +74,10 @@ jobs:
 
       - name: Set up Python
         run: uv python install ${{ inputs.python-version }}
+
+      - name: Run pre-install command
+        if: ${{ inputs.pre-install-command != '' }}
+        run: ${{ inputs.pre-install-command }}
 
       - name: Install dependencies
         run: uv sync
