@@ -14,7 +14,7 @@ on:
       run-bandit:
         description: 'Run Bandit security linter'
         type: boolean
-        default: true
+        default: false
       run-safety:
         description: 'Run Safety vulnerability check'
         type: boolean

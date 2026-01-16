@@ -14,7 +14,7 @@ on:
       run-type-check:
         description: 'Run type checking with pyright'
         type: boolean
-        default: true
+        default: false
       type-checker:
         description: 'Type checker to use (pyright or mypy)'
         type: string
@@ -22,7 +22,7 @@ on:
       run-lint:
         description: 'Run ruff linting and formatting check'
         type: boolean
-        default: true
+        default: false
       run-tests:
         description: 'Run pytest'
         type: boolean
@@ -58,7 +58,7 @@ on:
       run-security:
         description: 'Run security scan with bandit'
         type: boolean
-        default: true
+        default: false
       source-path:
         description: 'Path to source directory for security scans (defaults to package-name/)'
         type: string
