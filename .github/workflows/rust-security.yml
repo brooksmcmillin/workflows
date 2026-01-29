@@ -40,10 +40,15 @@ permissions:
   contents: read
   security-events: write
 
+concurrency:
+  group: rust-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cargo-audit:
     name: Cargo Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-cargo-audit }}
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +67,7 @@ jobs:
   cargo-deny:
     name: Cargo Deny
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-cargo-deny }}
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +81,7 @@ jobs:
   semgrep:
     name: Semgrep Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: ${{ inputs.run-semgrep }}
     permissions:
       contents: read
@@ -89,19 +96,28 @@ jobs:
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && github.repository_visibility == 'public'
         with:
           sarif_file: semgrep.sarif
+
+      - name: Upload SARIF as artifact (private repos)
+        uses: actions/upload-artifact@v4
+        if: always() && github.repository_visibility != 'public'
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          retention-days: 30
 
   trivy:
     name: Trivy Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-trivy }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -111,7 +127,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Run Trivy and generate SARIF
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -122,14 +138,23 @@ jobs:
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && github.repository_visibility == 'public'
         with:
           sarif_file: 'trivy-results.sarif'
           category: trivy
 
+      - name: Upload Trivy SARIF as artifact (private repos)
+        uses: actions/upload-artifact@v4
+        if: always() && github.repository_visibility != 'public'
+        with:
+          name: trivy-sarif
+          path: trivy-results.sarif
+          retention-days: 30
+
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: ${{ inputs.run-codeql }}
     permissions:
       security-events: write
@@ -157,6 +182,7 @@ jobs:
   summary:
     name: Security Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [cargo-audit, cargo-deny, semgrep, trivy]
     if: always()
     steps:

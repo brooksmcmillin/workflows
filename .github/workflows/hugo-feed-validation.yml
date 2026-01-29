@@ -32,9 +32,14 @@ on:
         type: boolean
         default: true
 
+concurrency:
+  group: hugo-feed-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate-feeds:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:

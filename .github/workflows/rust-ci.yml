@@ -56,10 +56,15 @@ on:
         description: 'Codecov token for coverage upload'
         required: false
 
+concurrency:
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Clippy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-lint }}
     steps:
       - uses: actions/checkout@v4
@@ -87,6 +92,7 @@ jobs:
   format:
     name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: ${{ inputs.run-format }}
     steps:
       - uses: actions/checkout@v4
@@ -103,6 +109,7 @@ jobs:
   test:
     name: Test${{ inputs.rust-versions != '' && format(' Rust {0}', matrix.rust-version) || '' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: ${{ inputs.run-tests }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
@@ -149,6 +156,7 @@ jobs:
   build:
     name: Build ${{ matrix.target.target }}
     runs-on: ${{ contains(matrix.target.target, 'windows') && 'windows-latest' || contains(matrix.target.target, 'apple') && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 30
     if: ${{ inputs.run-build }}
     strategy:
       fail-fast: false

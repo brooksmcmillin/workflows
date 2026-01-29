@@ -52,9 +52,14 @@ on:
         type: string
         default: 'temporary-public-storage'
 
+concurrency:
+  group: hugo-lighthouse-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -79,17 +84,24 @@ jobs:
         run: npm install -g @lhci/cli@${{ inputs.lhci-version }}
 
       - name: Run Lighthouse
+        env:
+          INPUT_URLS: ${{ inputs.urls }}
+          PERF_ASSERTION: ${{ inputs.performance-assertion }}
+          A11Y_ASSERTION: ${{ inputs.accessibility-assertion }}
+          BP_ASSERTION: ${{ inputs.best-practices-assertion }}
+          SEO_ASSERTION: ${{ inputs.seo-assertion }}
+          UPLOAD_TARGET: ${{ inputs.upload-target }}
         run: |
           URL_ARGS=""
-          for url in ${{ inputs.urls }}; do
+          for url in $INPUT_URLS; do
             URL_ARGS="$URL_ARGS --collect.url=$url"
           done
 
           lhci autorun \
             --collect.staticDistDir=./public \
             $URL_ARGS \
-            --assert.assertions.categories:performance=${{ inputs.performance-assertion }} \
-            --assert.assertions.categories:accessibility=${{ inputs.accessibility-assertion }} \
-            --assert.assertions.categories:best-practices=${{ inputs.best-practices-assertion }} \
-            --assert.assertions.categories:seo=${{ inputs.seo-assertion }} \
-            --upload.target=${{ inputs.upload-target }}
+            --assert.assertions.categories:performance="$PERF_ASSERTION" \
+            --assert.assertions.categories:accessibility="$A11Y_ASSERTION" \
+            --assert.assertions.categories:best-practices="$BP_ASSERTION" \
+            --assert.assertions.categories:seo="$SEO_ASSERTION" \
+            --upload.target="$UPLOAD_TARGET"

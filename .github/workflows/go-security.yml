@@ -24,10 +24,15 @@ permissions:
   contents: read
   security-events: write
 
+concurrency:
+  group: go-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   govulncheck:
     name: Go Vulnerability Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-govulncheck }}
     steps:
       - uses: actions/checkout@v4
@@ -45,12 +50,13 @@ jobs:
   trivy:
     name: Trivy Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-trivy }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -60,7 +66,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Run Trivy and generate SARIF
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -71,13 +77,22 @@ jobs:
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && github.repository_visibility == 'public'
         with:
           sarif_file: 'trivy-results.sarif'
+
+      - name: Upload Trivy SARIF as artifact (private repos)
+        uses: actions/upload-artifact@v4
+        if: always() && github.repository_visibility != 'public'
+        with:
+          name: trivy-sarif
+          path: trivy-results.sarif
+          retention-days: 30
 
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: ${{ inputs.run-codeql }}
     permissions:
       security-events: write
@@ -100,6 +115,7 @@ jobs:
   summary:
     name: Security Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [govulncheck, trivy, codeql]
     if: always()
     steps:

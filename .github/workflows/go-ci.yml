@@ -48,10 +48,15 @@ on:
         description: 'Codecov token for coverage upload'
         required: false
 
+concurrency:
+  group: go-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-lint }}
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +75,7 @@ jobs:
   test:
     name: Test${{ inputs.go-versions != '' && format(' Go {0}', matrix.go-version) || '' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: ${{ inputs.run-tests }}
     strategy:
       fail-fast: false
@@ -109,6 +115,7 @@ jobs:
   build:
     name: Build ${{ matrix.target.goos }}/${{ matrix.target.goarch }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: ${{ inputs.run-build }}
     strategy:
       fail-fast: false
