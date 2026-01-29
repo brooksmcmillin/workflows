@@ -95,7 +95,7 @@ jobs:
         run: semgrep scan --config=p/security-audit --config=p/secrets --config=p/rust --sarif --output=semgrep.sarif
 
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always() && github.repository_visibility == 'public'
         with:
           sarif_file: semgrep.sarif
@@ -137,7 +137,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always() && github.repository_visibility == 'public'
         with:
           sarif_file: 'trivy-results.sarif'
@@ -168,7 +168,7 @@ jobs:
           toolchain: ${{ inputs.rust-version }}
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: cpp
           queries: security-extended
@@ -177,7 +177,7 @@ jobs:
         run: cargo build --release
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   summary:
     name: Security Summary
