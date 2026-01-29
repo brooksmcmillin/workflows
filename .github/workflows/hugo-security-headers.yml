@@ -16,16 +16,24 @@ on:
         type: boolean
         default: true
 
+concurrency:
+  group: hugo-security-headers-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   security-headers:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check security headers
+        env:
+          SITE_URL: ${{ inputs.site-url }}
+          REQUIRED_HEADERS: ${{ inputs.required-headers }}
         run: |
-          echo "Checking security headers for ${{ inputs.site-url }}..."
+          echo "Checking security headers for $SITE_URL..."
 
           # Fetch headers
-          HEADERS=$(curl -sI ${{ inputs.site-url }})
+          HEADERS=$(curl -sI "$SITE_URL")
 
           echo "=== Response Headers ==="
           echo "$HEADERS"
@@ -47,8 +55,8 @@ jobs:
 
           WARNINGS=0
 
-          for header in ${{ inputs.required-headers }}; do
-            check_header "$header" || ((WARNINGS++))
+          for header in $REQUIRED_HEADERS; do
+            check_header "$header" || WARNINGS=$((WARNINGS + 1))
           done
 
           echo ""
@@ -62,9 +70,11 @@ jobs:
 
       - name: Check with Mozilla Observatory API
         if: ${{ inputs.run-mozilla-observatory }}
+        env:
+          SITE_URL: ${{ inputs.site-url }}
         run: |
           # Extract hostname from URL
-          HOSTNAME=$(echo "${{ inputs.site-url }}" | sed -e 's|https\?://||' -e 's|/.*||')
+          HOSTNAME=$(echo "$SITE_URL" | sed -e 's|https\?://||' -e 's|/.*||')
 
           echo "Requesting Mozilla Observatory scan for $HOSTNAME..."
 

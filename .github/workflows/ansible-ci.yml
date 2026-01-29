@@ -36,10 +36,15 @@ on:
         type: string
         default: ''
 
+concurrency:
+  group: ansible-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   yamllint:
     name: YAML Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: ${{ inputs.run-yamllint }}
     steps:
       - uses: actions/checkout@v4
@@ -72,9 +77,11 @@ jobs:
           EOF
 
       - name: Run yamllint
+        env:
+          YAMLLINT_CONFIG: ${{ inputs.yamllint-config }}
         run: |
-          if [ -n "${{ inputs.yamllint-config }}" ]; then
-            yamllint -c "${{ inputs.yamllint-config }}" .
+          if [ -n "$YAMLLINT_CONFIG" ]; then
+            yamllint -c "$YAMLLINT_CONFIG" .
           else
             yamllint -c .yamllint.yml .
           fi
@@ -82,6 +89,7 @@ jobs:
   ansible-lint:
     name: Ansible Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-ansible-lint }}
     steps:
       - uses: actions/checkout@v4
@@ -92,11 +100,13 @@ jobs:
           python-version: ${{ inputs.python-version }}
 
       - name: Install ansible-lint
+        env:
+          ANSIBLE_VERSION: ${{ inputs.ansible-version }}
         run: |
-          if [ "${{ inputs.ansible-version }}" = "latest" ]; then
+          if [ "$ANSIBLE_VERSION" = "latest" ]; then
             pip install ansible ansible-lint
           else
-            pip install "ansible-core~=${{ inputs.ansible-version }}.0" ansible-lint
+            pip install "ansible-core~=${ANSIBLE_VERSION}.0" ansible-lint
           fi
 
       - name: Install required collections
@@ -108,9 +118,11 @@ jobs:
           ansible-galaxy collection install community.general
 
       - name: Run ansible-lint
+        env:
+          LINT_CONFIG: ${{ inputs.lint-config }}
         run: |
-          if [ -n "${{ inputs.lint-config }}" ]; then
-            ansible-lint -c "${{ inputs.lint-config }}"
+          if [ -n "$LINT_CONFIG" ]; then
+            ansible-lint -c "$LINT_CONFIG"
           else
             ansible-lint
           fi
@@ -118,6 +130,7 @@ jobs:
   syntax-check:
     name: Syntax Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-syntax-check }}
     steps:
       - uses: actions/checkout@v4
@@ -128,11 +141,13 @@ jobs:
           python-version: ${{ inputs.python-version }}
 
       - name: Install Ansible
+        env:
+          ANSIBLE_VERSION: ${{ inputs.ansible-version }}
         run: |
-          if [ "${{ inputs.ansible-version }}" = "latest" ]; then
+          if [ "$ANSIBLE_VERSION" = "latest" ]; then
             pip install ansible
           else
-            pip install "ansible-core~=${{ inputs.ansible-version }}.0"
+            pip install "ansible-core~=${ANSIBLE_VERSION}.0"
           fi
 
       - name: Install required collections
@@ -143,8 +158,10 @@ jobs:
           ansible-galaxy collection install community.general
 
       - name: Find and check playbooks
+        env:
+          PLAYBOOK_PATHS: ${{ inputs.playbook-paths }}
         run: |
-          PLAYBOOKS="${{ inputs.playbook-paths }}"
+          PLAYBOOKS="$PLAYBOOK_PATHS"
           if [ -z "$PLAYBOOKS" ]; then
             # Find all yaml files in root that look like playbooks (contain 'hosts:')
             PLAYBOOKS=$(grep -l "^- .*hosts:" *.yaml *.yml 2>/dev/null || true)

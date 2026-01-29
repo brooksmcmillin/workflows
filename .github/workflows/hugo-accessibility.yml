@@ -36,9 +36,14 @@ on:
         type: string
         default: '8080'
 
+concurrency:
+  group: hugo-accessibility-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   accessibility:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,14 +68,20 @@ jobs:
         run: npm install -g pa11y-ci
 
       - name: Start local server
+        env:
+          SERVER_PORT: ${{ inputs.server-port }}
         run: |
-          npx serve public -l ${{ inputs.server-port }} &
+          npx serve public -l "$SERVER_PORT" &
           sleep 5
 
       - name: Run accessibility tests
+        env:
+          INPUT_URLS: ${{ inputs.urls }}
+          SERVER_PORT: ${{ inputs.server-port }}
+          PA11Y_CONFIG: ${{ inputs.pa11y-config }}
         run: |
           URLS=""
-          for url in ${{ inputs.urls }}; do
-            URLS="$URLS http://localhost:${{ inputs.server-port }}$url"
+          for url in $INPUT_URLS; do
+            URLS="$URLS http://localhost:${SERVER_PORT}$url"
           done
-          pa11y-ci --config ${{ inputs.pa11y-config }} $URLS
+          pa11y-ci --config "$PA11Y_CONFIG" $URLS

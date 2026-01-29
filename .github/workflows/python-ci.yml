@@ -71,10 +71,15 @@ on:
         description: 'GitHub PAT for private repo access (required if pre-install-command references private repos)'
         required: false
 
+concurrency:
+  group: python-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-lint }}
     defaults:
       run:
@@ -117,6 +122,7 @@ jobs:
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-type-check }}
     defaults:
       run:
@@ -161,6 +167,7 @@ jobs:
   test:
     name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: ${{ inputs.run-tests }}
     defaults:
       run:
@@ -212,6 +219,7 @@ jobs:
   build:
     name: Build Package
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-build }}
     defaults:
       run:
@@ -258,6 +266,7 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: ${{ inputs.run-security }}
     defaults:
       run:
