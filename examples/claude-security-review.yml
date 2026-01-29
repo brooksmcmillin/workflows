@@ -1,0 +1,31 @@
+# Copy this file to your project's .github/workflows/claude-security-review.yml
+# Replace YOUR_USERNAME with your GitHub username
+# Requires CLAUDE_CODE_OAUTH_TOKEN secret to be set
+
+name: Claude Security Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**/*.py"
+      # Add more file patterns as needed:
+      # - "**/*.ts"
+      # - "**/*.tsx"
+      # - "**/*.js"
+      # - "**/*.jsx"
+      # - "**/*.go"
+      # - "**/*.rs"
+
+jobs:
+  claude-security-review:
+    uses: YOUR_USERNAME/workflows/.github/workflows/claude-security-review.yml@main
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    # Optional: customize the workflow
+    # with:
+    #   security-concerns: |
+    #     **Custom Security Concerns:**
+    #     - Your custom security checks here
+    #   claude-args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr view:*)"'
+    #   checkout-version: 'v6'

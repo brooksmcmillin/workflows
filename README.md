@@ -26,6 +26,7 @@ This repository contains reusable GitHub Actions workflows for Python, Node.js, 
 | `hugo-lighthouse.yml` | Lighthouse CI performance and quality testing |
 | `hugo-feed-validation.yml` | RSS/XML feed validation for Hugo sites |
 | `claude.yml` | Claude PR assistant for @claude mentions |
+| `claude-code-review.yml` | Claude-powered code review for pull requests |
 | `claude-security-review.yml` | Claude-powered security code review |
 
 ## Configuration Files
@@ -402,9 +403,9 @@ jobs:
       site-url: 'https://example.com'
 ```
 
-### Claude PR Assistant
+### Claude Workflows
 
-Create `.github/workflows/claude.yml`:
+**PR Assistant** (`.github/workflows/claude.yml`):
 
 ```yaml
 name: Claude
@@ -422,6 +423,42 @@ on:
 jobs:
   claude:
     uses: YOUR_USERNAME/workflows/.github/workflows/claude.yml@main
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
+**Code Review** (`.github/workflows/claude-code-review.yml`):
+
+```yaml
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**/*.py"
+
+jobs:
+  claude-review:
+    uses: YOUR_USERNAME/workflows/.github/workflows/claude-code-review.yml@main
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
+**Security Review** (`.github/workflows/claude-security-review.yml`):
+
+```yaml
+name: Claude Security Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**/*.py"
+
+jobs:
+  claude-security-review:
+    uses: YOUR_USERNAME/workflows/.github/workflows/claude-security-review.yml@main
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
@@ -657,6 +694,26 @@ Copy `examples/dependabot.yml` to your project's `.github/dependabot.yml` and un
 | `validate-sitemap` | boolean | `true` | Validate sitemap.xml |
 | `validate-rss` | boolean | `true` | Validate RSS feeds |
 | `check-rss-structure` | boolean | `true` | Check RSS feed structure for required elements |
+
+### claude-code-review.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `file-patterns` | string | `'**/*.py'` | File patterns to trigger review (newline separated) |
+| `pr-types` | string | `'["opened", "synchronize", "reopened"]'` | PR types to trigger on (JSON array) |
+| `focus-areas` | string | See workflow | Custom focus areas for the review |
+| `claude-args` | string | See workflow | Additional arguments to pass to Claude Code |
+| `checkout-version` | string | `'v4'` | Version of actions/checkout to use |
+
+### claude-security-review.yml
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `file-patterns` | string | `'**/*.py'` | File patterns to trigger review (newline separated) |
+| `pr-types` | string | `'["opened", "synchronize", "reopened"]'` | PR types to trigger on (JSON array) |
+| `security-concerns` | string | See workflow | Custom security concerns to check for |
+| `claude-args` | string | See workflow | Additional arguments to pass to Claude Code |
+| `checkout-version` | string | `'v4'` | Version of actions/checkout to use |
 
 ## Requirements
 

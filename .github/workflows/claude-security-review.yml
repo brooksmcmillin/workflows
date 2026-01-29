@@ -1,0 +1,83 @@
+name: Claude Security Review
+
+on:
+  workflow_call:
+    inputs:
+      file-patterns:
+        description: 'File patterns to trigger review (newline separated)'
+        type: string
+        default: |
+          **/*.py
+      pr-types:
+        description: 'PR types to trigger on (JSON array)'
+        type: string
+        default: '["opened", "synchronize", "reopened"]'
+      security-concerns:
+        description: 'Custom security concerns to check for'
+        type: string
+        default: |
+          **Security Concerns:**
+          - Authentication and authorization vulnerabilities
+          - Injection attacks (SQL, command, code injection)
+          - Sensitive data exposure (credentials, API keys, PII)
+          - Insecure dependencies or imports
+          - Path traversal or file access issues
+          - Improper input validation or sanitization
+          - Cryptographic weaknesses
+          - OAuth/token handling issues
+          - Race conditions or TOCTOU vulnerabilities
+
+          **Code Quality (security-relevant):**
+          - Error handling that might leak sensitive info
+          - Logging that might expose secrets
+          - Unsafe deserialization
+          - Resource exhaustion possibilities
+      claude-args:
+        description: 'Additional arguments to pass to Claude Code'
+        type: string
+        default: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+      checkout-version:
+        description: 'Version of actions/checkout to use'
+        type: string
+        default: 'v4'
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: 'OAuth token for Claude Code'
+        required: true
+
+jobs:
+  claude-security-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@${{ inputs.checkout-version }}
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Security Review
+        id: claude-security-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Please perform a security-focused review of this pull request. Analyze the changes for:
+
+            ${{ inputs.security-concerns }}
+
+            Use the repository's CLAUDE.md for guidance on the codebase architecture.
+
+            Be specific about any issues found, including file paths and line numbers.
+            If no security issues are found, briefly confirm the changes look safe.
+
+            Use `gh pr comment` with your Bash tool to leave your security review as a comment on the PR.
+
+          claude_args: ${{ inputs.claude-args }}

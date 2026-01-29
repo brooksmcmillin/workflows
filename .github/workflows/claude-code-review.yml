@@ -1,0 +1,78 @@
+name: Claude Code Review
+
+on:
+  workflow_call:
+    inputs:
+      file-patterns:
+        description: 'File patterns to trigger review (newline separated)'
+        type: string
+        default: |
+          **/*.py
+      pr-types:
+        description: 'PR types to trigger on (JSON array)'
+        type: string
+        default: '["opened", "synchronize", "reopened"]'
+      focus-areas:
+        description: 'Custom focus areas for the review'
+        type: string
+        default: |
+          **Code Quality & Correctness:**
+          - Logic errors or bugs
+          - Edge cases not handled
+          - Potential runtime errors
+          - Code that doesn't match its documentation
+
+          **Best Practices:**
+          - Code organization and structure
+          - Error handling
+          - Performance issues
+          - Maintainability concerns
+      claude-args:
+        description: 'Additional arguments to pass to Claude Code'
+        type: string
+        default: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+      checkout-version:
+        description: 'Version of actions/checkout to use'
+        type: string
+        default: 'v4'
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: 'OAuth token for Claude Code'
+        required: true
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@${{ inputs.checkout-version }}
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Please review this pull request focusing on:
+
+            ${{ inputs.focus-areas }}
+
+            Use the repository's CLAUDE.md for guidance on the codebase architecture.
+
+            Be specific about any issues found, including file paths and line numbers.
+            If the code looks good, briefly confirm the changes are sound.
+
+            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+
+          claude_args: ${{ inputs.claude-args }}
