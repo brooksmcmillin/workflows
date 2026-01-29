@@ -187,7 +187,7 @@ jobs:
 
       - name: Upload build artifacts
         if: ${{ inputs.binary-name != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.binary-name }}-${{ matrix.target.target }}
           path: target/${{ matrix.target.target }}/release/${{ inputs.binary-name }}${{ contains(matrix.target.target, 'windows') && '.exe' || '' }}
