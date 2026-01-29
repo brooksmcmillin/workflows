@@ -313,7 +313,7 @@ jobs:
 
       - name: Upload bandit results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bandit-results-${{ inputs.package-name }}
           path: ${{ inputs.working-directory }}/bandit-results.json
