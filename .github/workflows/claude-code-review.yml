@@ -31,10 +31,6 @@ on:
         description: 'Additional arguments to pass to Claude Code'
         type: string
         default: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-      checkout-version:
-        description: 'Version of actions/checkout to use'
-        type: string
-        default: 'v4'
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         description: 'OAuth token for Claude Code'
@@ -59,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@${{ inputs.checkout-version }}
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
