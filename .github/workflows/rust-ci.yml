@@ -57,7 +57,7 @@ on:
         required: false
 
 concurrency:
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:

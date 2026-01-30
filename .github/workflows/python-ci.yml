@@ -72,7 +72,7 @@ on:
         required: false
 
 concurrency:
-  group: python-ci-${{ github.workflow }}-${{ github.ref }}
+  group: python-ci-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:

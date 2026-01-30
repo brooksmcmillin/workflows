@@ -37,7 +37,7 @@ on:
         default: ''
 
 concurrency:
-  group: ansible-ci-${{ github.workflow }}-${{ github.ref }}
+  group: ansible-ci-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
