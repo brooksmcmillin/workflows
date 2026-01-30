@@ -67,7 +67,7 @@ jobs:
     timeout-minutes: 15
     if: ${{ inputs.run-lint }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -95,7 +95,7 @@ jobs:
     timeout-minutes: 10
     if: ${{ inputs.run-format }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -116,7 +116,7 @@ jobs:
       matrix:
         rust-version: ${{ inputs.rust-versions != '' && fromJson(inputs.rust-versions) || fromJson(format('["{0}"]', inputs.rust-version)) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -163,7 +163,7 @@ jobs:
       matrix:
         target: ${{ fromJson(inputs.build-targets) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master

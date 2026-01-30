@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 15
     if: ${{ inputs.run-cargo-audit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: 15
     if: ${{ inputs.run-cargo-deny }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v2
@@ -90,7 +90,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run Semgrep scan
         run: semgrep scan --config=p/security-audit --config=p/secrets --config=p/rust --sarif --output=semgrep.sarif
@@ -115,7 +115,7 @@ jobs:
     timeout-minutes: 15
     if: ${{ inputs.run-trivy }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.33.1
@@ -161,7 +161,7 @@ jobs:
       security-events: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
