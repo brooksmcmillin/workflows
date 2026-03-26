@@ -147,7 +147,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.rust-version == inputs.coverage-rust-version
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           fail_ci_if_error: false
